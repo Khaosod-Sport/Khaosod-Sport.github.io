@@ -1,0 +1,1980 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="วันหยุดแผนกกีฬา">
+<meta name="robots" content="noindex, nofollow">
+<title>บันทึกวันหยุดแผนกกีฬา</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+/* Layout: a scoreboard band over a league table. Balances read like standings; everything else is a form beside its own history. */
+:root {
+  --bg: #f2f5f1;
+  --surface: #ffffff;
+  --sunken: #e9eee8;
+  --ink: #14211b;
+  --muted: #566a5f;
+  --line: #d3ddd5;
+  --accent: #0b6b46;
+  --accent-ink: #ffffff;
+  --board: #0f3a2c;
+  --board-ink: #eef6f1;
+  --board-muted: #a9c6b7;
+  --warn: #8f4f00;
+  --warn-bg: #fcefd8;
+  --bad: #ab2219;
+  --bad-bg: #fbe5e2;
+  --font-display: "Chakra Petch", "IBM Plex Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
+  --font-body: "IBM Plex Sans Thai", "Leelawadee UI", Tahoma, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1613; --surface: #172019; --sunken: #111a15; --ink: #e6efe9; --muted: #98aa9f; --line: #2c3b32;
+    --accent: #47c08f; --accent-ink: #07150f; --board: #123227; --board-ink: #eef6f1; --board-muted: #a0bdae;
+    --warn: #f0b75f; --warn-bg: #33270f; --bad: #ff978c; --bad-bg: #3b1b18; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1613; --surface: #172019; --sunken: #111a15; --ink: #e6efe9; --muted: #98aa9f; --line: #2c3b32;
+  --accent: #47c08f; --accent-ink: #07150f; --board: #123227; --board-ink: #eef6f1; --board-muted: #a0bdae;
+  --warn: #f0b75f; --warn-bg: #33270f; --bad: #ff978c; --bad-bg: #3b1b18; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 1040px; margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+.board { background: var(--board); color: var(--board-ink); }
+.board .wrap { padding-block: 20px 0; display: grid; gap: 14px; }
+.board h1 { margin: 0; font-family: var(--font-display); font-size: clamp(1.45rem, 4.5vw, 1.95rem); font-weight: 700; line-height: 1.25; text-wrap: balance; }
+.today { margin: 0; color: var(--board-muted); }
+.today b { color: var(--board-ink); font-weight: 600; }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; }
+.tabs a { position: relative; padding: 8px 14px; color: var(--board-muted); text-decoration: none; font-family: var(--font-display); font-weight: 600; border-radius: 6px 6px 0 0; }
+.tabs a:hover { color: var(--board-ink); }
+.tabs a[aria-current="page"] { background: var(--bg); color: var(--ink); }
+.tabs .count { display: inline-block; margin-left: 5px; min-width: 19px; padding: 0 5px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); font-size: .78rem; line-height: 19px; text-align: center; }
+
+main.wrap { padding-block: 24px 48px; }
+.view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+h2 { margin: 0; font-family: var(--font-display); font-size: 1.2rem; font-weight: 600; }
+h3 { margin: 0; font-family: var(--font-display); font-size: 1.02rem; font-weight: 600; }
+.section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+.hint { margin: 0; color: var(--muted); font-size: .9rem; }
+
+.banner { margin: 0; padding: 10px 14px; border-radius: 6px; background: var(--warn-bg); color: var(--warn); }
+.banner.bad { background: var(--bad-bg); color: var(--bad); }
+
+.table-scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--line); }
+tr:last-child td, tr:last-child th { border-bottom: 0; }
+thead th { font-size: .84rem; font-weight: 500; color: var(--muted); white-space: nowrap; background: var(--sunken); }
+.standings th.person { position: sticky; left: 0; background: var(--surface); font-weight: 600; min-width: 96px; }
+.standings thead th.person { background: var(--sunken); font-weight: 500; }
+.standings .num { text-align: center; white-space: nowrap; }
+.remain { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.of { color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.remain.zero { color: var(--muted); }
+.remain.neg { color: var(--bad); }
+
+.alerts { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.alerts li { padding: 10px 14px; border-radius: 6px; background: var(--warn-bg); color: var(--warn); }
+.alerts b { font-weight: 600; }
+.alerts .when { display: block; font-size: .9rem; }
+details > summary { cursor: pointer; color: var(--muted); }
+details .alerts { margin-top: 8px; }
+details .alerts li { background: var(--sunken); color: var(--muted); }
+
+.split { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 760px) { .split { grid-template-columns: minmax(0, 1fr); } }
+.columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 28px; align-items: start; }
+form.inline-form { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; background: none; border: 0; }
+form.inline-form input[type="text"] { flex: 1 1 180px; width: auto; background: var(--surface); }
+form.inline-form select { flex: 0 1 180px; width: auto; background: var(--surface); }
+.page-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.edit-access { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: .9rem; color: var(--muted); }
+.edit-access input { width: 150px; padding: 5px 8px; background: var(--surface); }
+input[type="password"] { min-width: 0; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); font: inherit; }
+.edit-on { color: var(--accent); font-weight: 600; }
+.small.tool { padding: 6px 12px; color: var(--accent); border-color: var(--accent); font-weight: 500; }
+.today-off b { color: var(--ink); font-weight: 600; }
+.people td, .people th { vertical-align: middle; }
+.people tbody th { font-weight: 600; }
+.people select { width: auto; max-width: 100%; padding: 3px 6px; font-size: .88rem; }
+.people .move { margin-left: 0; }
+@media (min-width: 621px) { .people .duty .lbl { display: none; } }
+@media (max-width: 620px) {
+  .people thead { display: none; }
+  .people, .people tbody { display: block; }
+  .people tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .people tr:last-child { border-bottom: 0; }
+  .people th, .people td { display: block; padding: 0; border: 0; }
+  .people .c-pos, .people .c-duty { grid-column: 1 / -1; }
+  .people .c-move { grid-column: 2; grid-row: 1; }
+}
+.cal { table-layout: fixed; min-width: 0; }
+.cal th { padding: 6px 2px; text-align: center; white-space: normal; }
+.cal td { height: 92px; padding: 6px; vertical-align: top; border: 1px solid var(--line); font-size: .86rem; line-height: 1.35; overflow-wrap: anywhere; }
+.cal td.blank { background: var(--sunken); }
+.cal td.weekend { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+.cal td.holiday { background: var(--warn-bg); }
+.cal td.today { color: var(--ink); }
+.cal td.today .cal-day { color: var(--accent-ink); background: var(--accent); }
+.cal-day { display: inline-block; min-width: 22px; padding: 0 4px; border-radius: 4px; font-family: var(--font-display); font-weight: 700; text-align: center; }
+.cal-holiday { display: block; color: var(--warn); font-size: .8rem; }
+.cal-group { display: block; margin-top: 2px; color: var(--accent); font-family: var(--font-display); font-weight: 700; }
+.cal-name { display: block; }
+.cal-press { display: block; margin-top: 2px; color: var(--muted); font-family: var(--font-display); font-size: .76rem; font-weight: 600; }
+.cal-note { display: block; color: var(--muted); font-size: .76rem; }
+@media (max-width: 620px) {
+  .cal td { height: 76px; padding: 3px; font-size: .72rem; }
+  .cal-holiday, .cal-note, .cal-press { font-size: .64rem; }
+}
+#image-dialog { width: min(980px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+#image-dialog[open] { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+#image-dialog::backdrop { background: rgba(0, 0, 0, .55); }
+.image-scroll { overflow: auto; max-height: calc(100vh - 150px); border: 1px solid var(--line); border-radius: 6px; }
+.image-scroll img { display: block; width: 100%; height: auto; }
+.person-link { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+.back { color: var(--muted); font-size: .92rem; }
+.back::before { content: "\2039\00a0"; }
+.standings tr.has-off th, .standings tr.has-off td { border-bottom: 0; padding-bottom: 4px; }
+.standings .off-row td { padding-top: 0; }
+.offdays { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: .9rem; }
+.offdays .past { color: var(--muted); }
+.off-row td > * + * { margin-top: 6px; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.meta select { width: auto; padding: 3px 6px; font-size: .84rem; }
+.desk { font-size: .84rem; color: var(--muted); }
+.duty { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.duty .lbl { margin-right: 2px; font-size: .84rem; color: var(--muted); }
+.chip { min-width: 30px; height: 28px; padding: 0 6px; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--muted); font-size: .84rem; }
+.chip:hover:not(:disabled) { border-color: var(--accent); }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.chip:disabled { cursor: default; }
+.move { display: inline-flex; gap: 4px; margin-left: auto; }
+.move button { width: 30px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--muted); font-size: .72rem; }
+.move button:hover:not(:disabled) { border-color: var(--muted); color: var(--ink); }
+.move button:disabled { opacity: .35; cursor: default; }
+.roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 20px; align-items: start; }
+.roster-group { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
+.member { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.member select { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 560px) {
+  .standings th, .standings td { padding-left: 8px; padding-right: 8px; }
+  .standings th.person { min-width: 0; }
+  .standings thead th { white-space: normal; }
+  .standings .of { display: block; line-height: 1.1; }
+}
+
+form { display: grid; gap: 12px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > label, .legend { font-size: .88rem; font-weight: 500; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+input[type="text"], input[type="date"], input[type="number"], select {
+  width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font: inherit;
+}
+.choice { display: flex; flex-wrap: wrap; gap: 14px; }
+.choice label, .check { display: inline-flex; align-items: center; gap: 6px; font-size: .92rem; }
+button { font: inherit; cursor: pointer; }
+.primary { padding: 9px 16px; border: 0; border-radius: 6px; background: var(--accent); color: var(--accent-ink); font-family: var(--font-display); font-weight: 600; }
+.primary:disabled { opacity: .45; cursor: not-allowed; }
+.small { padding: 3px 10px; border: 1px solid var(--line); border-radius: 5px; background: transparent; color: var(--muted); font-size: .84rem; white-space: nowrap; }
+.small:hover { color: var(--ink); border-color: var(--muted); }
+.small.armed { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); }
+.linklike { padding: 0; border: 0; background: none; color: inherit; text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.board :focus-visible { outline-color: var(--board-ink); }
+
+.preview { display: grid; gap: 6px; }
+.preview:empty { display: none; }
+.preview p { margin: 0; padding: 8px 10px; border-radius: 6px; background: var(--sunken); font-size: .92rem; }
+.preview p.warn { background: var(--warn-bg); color: var(--warn); }
+.preview p.bad { background: var(--bad-bg); color: var(--bad); }
+
+.rows { display: grid; margin: 0; padding: 0; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.rows li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.rows li:last-child { border-bottom: 0; }
+.rows .main { min-width: 0; flex: 1 1 200px; overflow-wrap: anywhere; }
+.rows .main b { font-weight: 600; }
+.rows .sub { display: block; color: var(--muted); font-size: .88rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.rows .off { color: var(--muted); }
+.plus { color: var(--accent); font-family: var(--font-display); font-weight: 700; font-variant-numeric: tabular-nums; }
+.minus { color: var(--bad); font-family: var(--font-display); font-weight: 700; font-variant-numeric: tabular-nums; }
+.empty { padding: 20px 16px; background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
+.empty p { margin: 0; }
+.head-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.head-row select { width: auto; max-width: 100%; padding: 5px 8px; }
+
+#toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); padding: 10px 16px; border-radius: 6px; background: var(--ink); color: var(--bg); box-shadow: 0 6px 20px rgba(0,0,0,.25); z-index: 20; }
+.readonly [data-write] { display: none !important; }
+.readonly .split { grid-template-columns: minmax(0, 1fr); }
+@media (prefers-reduced-motion: no-preference) { .tabs a { transition: color .12s; } }
+</style>
+</head>
+<body class="readonly">
+
+<header class="board">
+  <div class="wrap">
+    <h1>บันทึกวันหยุดแผนกกีฬา</h1>
+    <p class="today" id="today-line"></p>
+    <nav class="tabs" aria-label="เมนูหลัก">
+      <a href="#overview" data-tab="overview">ภาพรวม</a>
+      <a href="#leave" data-tab="leave">วันลาหยุด<span class="count" id="tab-alerts" hidden></span></a>
+      <a href="#swap" data-tab="swap">แลกเวร</a>
+      <a href="#holiday" data-tab="holiday">เวรวันหยุด</a>
+      <a href="#setup" data-tab="setup">ตั้งค่า</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="banner" id="status" hidden style="margin-bottom:16px"></p>
+  <div class="page-tools">
+    <span class="edit-access">
+      <button type="button" class="small" id="edit-open">ใส่รหัสเพื่อแก้ไข</button>
+      <form id="edit-form" class="inline-form" hidden novalidate>
+        <input type="password" id="edit-code" autocomplete="off" placeholder="รหัสแก้ไข" aria-label="รหัสแก้ไข">
+        <button type="submit" class="small">ยืนยัน</button>
+        <button type="button" class="small" id="edit-cancel">ยกเลิก</button>
+      </form>
+      <span id="edit-on" hidden><span class="edit-on">แก้ไขได้</span> <button type="button" class="small" id="edit-off">ออกจากโหมดแก้ไข</button></span>
+    </span>
+    <button type="button" class="small tool" id="save-image">บันทึกหน้านี้เป็นรูป</button>
+  </div>
+
+  <section class="view" id="view-overview">
+    <div class="section">
+      <h2>พนักงาน</h2>
+      <form id="emp-form" class="inline-form" data-write novalidate>
+        <input type="text" id="emp-name" maxlength="80" placeholder="ชื่อพนักงาน" aria-label="ชื่อพนักงาน">
+        <select id="emp-desk" aria-label="ตำแหน่ง"></select>
+        <button class="primary" type="submit">เพิ่มพนักงาน</button>
+      </form>
+      <div id="people"></div>
+      <details id="inactive-box" hidden>
+        <summary id="inactive-title"></summary>
+        <ul class="rows" id="inactive-list" style="margin-top:8px"></ul>
+      </details>
+    </div>
+  </section>
+
+  <section class="view" id="view-leave" hidden>
+    <p class="hint today-off" id="today-off"></p>
+    <div class="section" id="alerts-section" hidden>
+      <h2>แจ้งเตือนลาตรงกัน</h2>
+      <ul class="alerts" id="alerts-now"></ul>
+      <details id="alerts-past-box" hidden>
+        <summary id="alerts-past-title"></summary>
+        <ul class="alerts" id="alerts-past"></ul>
+      </details>
+    </div>
+    <div class="split">
+      <div class="section" data-write>
+        <h2>ลงวันลาหยุด</h2>
+        <form id="leave-form" novalidate>
+          <div class="field"><label for="leave-emp">ใครหยุด</label><select id="leave-emp"></select></div>
+          <div class="field"><label for="leave-type">ใช้สิทธิ์อะไร</label><select id="leave-type"></select></div>
+          <div class="two">
+            <div class="field"><label for="leave-start">ตั้งแต่วันที่</label><input type="date" id="leave-start"></div>
+            <div class="field"><label for="leave-end">ถึงวันที่</label><input type="date" id="leave-end"></div>
+          </div>
+          <div class="field"><label for="leave-note">หมายเหตุ (ไม่บังคับ)</label><input type="text" id="leave-note" maxlength="200"></div>
+          <div class="preview" id="leave-preview" aria-live="polite"></div>
+          <button class="primary" id="leave-submit" type="submit" disabled>บันทึกวันลา</button>
+        </form>
+        <p class="hint">นับเฉพาะจันทร์-ศุกร์ที่ไม่ใช่วันนักขัตฤกษ์ ลาเต็มวันเท่านั้น</p>
+      </div>
+      <div class="section">
+        <h2>วันลาคงเหลือ</h2>
+        <p class="hint">ตัวเลขใหญ่คือวันที่เหลือ ตัวเลขหลังขีดคือโควตาทั้งหมด ใต้ชื่อคือวันที่หยุดและสิทธิ์ที่ใช้ กดชื่อเพื่อเพิ่มหรือลดโควตา</p>
+        <div id="standings"></div>
+        <div class="head-row">
+          <h2>ประวัติการลา</h2>
+          <select id="leave-filter" aria-label="กรองตามพนักงาน"></select>
+        </div>
+        <div id="leave-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-person" hidden>
+    <div class="section">
+      <div><button type="button" class="linklike back" id="person-back">กลับ</button></div>
+      <div class="head-row" id="person-head">
+        <h2 id="person-name" tabindex="-1"></h2>
+        <span class="actions" id="person-actions"></span>
+      </div>
+      <div id="person-meta"></div>
+      <div id="person-balance"></div>
+    </div>
+    <div class="split">
+      <div class="section" data-write>
+        <h3>เพิ่มหรือลดโควตา</h3>
+        <form id="quota-form" novalidate>
+          <div class="field"><label for="quota-type">ประเภทการลา</label><select id="quota-type"></select></div>
+          <div class="two">
+            <div class="field">
+              <span class="legend">รายการ</span>
+              <div class="choice">
+                <label><input type="radio" name="quota-dir" id="quota-add" value="1" checked> เพิ่ม</label>
+                <label><input type="radio" name="quota-dir" id="quota-sub" value="-1"> ลด</label>
+              </div>
+            </div>
+            <div class="field"><label for="quota-days">จำนวนวัน</label><input type="number" id="quota-days" min="1" step="1" inputmode="numeric"></div>
+          </div>
+          <div class="field"><label for="quota-reason" id="quota-reason-label">เหตุผล (ไม่บังคับ)</label><input type="text" id="quota-reason" maxlength="200"></div>
+          <div class="preview" id="quota-preview" aria-live="polite"></div>
+          <button class="primary" id="quota-submit" type="submit">บันทึกโควตา</button>
+        </form>
+      </div>
+      <div class="section">
+        <h3>ประวัติโควตา</h3>
+        <div id="quota-list"></div>
+        <h3>ประวัติการลา</h3>
+        <div id="person-leaves"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-swap" hidden>
+    <div class="split">
+      <div class="section" data-write>
+        <h2>บันทึกแลกเวร</h2>
+        <form id="swap-form" novalidate>
+          <div class="field"><label for="swap-date">วันที่หยุด</label><input type="date" id="swap-date"></div>
+          <div class="field"><label for="swap-emp">ใครหยุด</label><select id="swap-emp"></select></div>
+          <div class="field"><label for="swap-rep">ใครมาแทน</label><select id="swap-rep"></select></div>
+          <div class="field"><label for="swap-note">หมายเหตุ (ไม่บังคับ)</label><input type="text" id="swap-note" maxlength="200"></div>
+          <div class="preview" id="swap-preview" aria-live="polite"></div>
+          <button class="primary" id="swap-submit" type="submit">บันทึกแลกเวร</button>
+        </form>
+        <p class="hint">ใช้กับวันเสาร์-อาทิตย์และวันนักขัตฤกษ์ ไม่หักโควตาวันลา</p>
+      </div>
+      <div class="section">
+        <h2>ประวัติแลกเวร</h2>
+        <div id="swap-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-holiday" hidden>
+    <div class="section">
+      <div class="head-row">
+        <h2 id="cal-title"></h2>
+        <span class="actions">
+          <button type="button" class="small" id="cal-prev">เดือนก่อน</button>
+          <button type="button" class="small" id="cal-now">เดือนนี้</button>
+          <button type="button" class="small" id="cal-next">เดือนถัดไป</button>
+        </span>
+      </div>
+      <div id="holiday-calendar"></div>
+    </div>
+    <div class="section">
+      <h2>เวรปิดหน้าวันศุกร์ (ในประเทศ)</h2>
+      <p class="hint" data-write>เวรนี้สลับกันไม่ตายตัว เปลี่ยนคนหรือหมายเหตุในแต่ละวันได้ ปฏิทินด้านบนจะเปลี่ยนตาม</p>
+      <form id="friday-form" class="inline-form" data-write novalidate>
+        <input type="date" id="friday-date" aria-label="วันที่เข้าเวร">
+        <select id="friday-emp" aria-label="ใครอยู่เวร"></select>
+        <input type="text" id="friday-note" maxlength="80" placeholder="หมายเหตุ เช่น ใครแทนใคร" aria-label="หมายเหตุ">
+        <button class="primary" type="submit">เพิ่มเวร</button>
+      </form>
+      <div id="friday-list"></div>
+    </div>
+    <div class="section">
+      <h2>รายชื่อเวรวันหยุด</h2>
+      <p class="hint" data-write>เปลี่ยนชื่อได้เมื่อมีการแลกเวร ถ้าเลือกคนที่อยู่เวรอื่น ทั้งสองคนจะสลับเวรกันให้</p>
+      <div id="holiday-groups"></div>
+    </div>
+    <div class="section">
+      <h2>ตารางเวรทำงานและเวรหยุด</h2>
+      <div id="holiday-schedule"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-setup" hidden>
+    <div class="columns">
+      <div class="section">
+        <h2>ตำแหน่ง</h2>
+        <form id="pos-form" data-write novalidate>
+          <div class="field"><label for="pos-name">ชื่อตำแหน่ง</label><input type="text" id="pos-name" maxlength="60"></div>
+          <button class="primary" type="submit">เพิ่มตำแหน่ง</button>
+        </form>
+        <div id="pos-list"></div>
+      </div>
+      <div class="section">
+        <h2>ประเภทการลา</h2>
+        <form id="type-form" data-write novalidate>
+          <div class="field"><label for="type-name">ชื่อประเภท</label><input type="text" id="type-name" maxlength="60"></div>
+          <label class="check"><input type="checkbox" id="type-reason"> ต้องระบุเหตุผลตอนเพิ่มโควตา</label>
+          <button class="primary" type="submit">เพิ่มประเภท</button>
+        </form>
+        <div id="type-list"></div>
+      </div>
+      <div class="section">
+        <h2>วันนักขัตฤกษ์</h2>
+        <form id="hol-form" data-write novalidate>
+          <div class="field"><label for="hol-date">วันที่</label><input type="date" id="hol-date"></div>
+          <div class="field"><label for="hol-name">ชื่อวันหยุด</label><input type="text" id="hol-name" maxlength="80"></div>
+          <button class="primary" type="submit">เพิ่มวันหยุด</button>
+        </form>
+        <div id="hol-list"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<dialog id="image-dialog" aria-labelledby="image-title">
+  <div class="head-row">
+    <h2 id="image-title"></h2>
+    <span class="actions">
+      <button type="button" class="primary" id="image-save">บันทึกรูป</button>
+      <button type="button" class="small" id="image-close">ปิด</button>
+    </span>
+  </div>
+  <p class="hint" id="image-hint">ถ้าไฟล์ไม่ลงเครื่อง ให้กดค้างที่รูป หรือคลิกขวาแล้วเลือกบันทึกรูป</p>
+  <div class="image-scroll"><img id="image-preview" alt=""></div>
+</dialog>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Dates: always yyyy-mm-dd strings, computed in UTC so no timezone can shift a day ---------- */
+  const MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+  const MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const DAYS_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+  const DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+  const MAX_RANGE_DAYS = 366;
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const toUTC = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+  const toISO = (d) => d.toISOString().slice(0, 10);
+  const addDays = (iso, k) => { const d = toUTC(iso); d.setUTCDate(d.getUTCDate() + k); return toISO(d); };
+  const dow = (iso) => toUTC(iso).getUTCDay();
+  const isWeekend = (iso) => dow(iso) === 0 || dow(iso) === 6;
+  const todayISO = () => { const n = new Date(); return `${n.getFullYear()}-${pad(n.getMonth() + 1)}-${pad(n.getDate())}`; };
+  const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+
+  function fmtDate(iso) {
+    const d = toUTC(iso);
+    return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear() + 543}`;
+  }
+  /* "2-3 พ.ย. 2569": consecutive calendar days collapse into one run. */
+  function fmtDates(dates, short) {
+    const year = short ? toUTC(todayISO()).getUTCFullYear() : null;
+    /* short form drops the year when it is the current one: "2-3 พ.ย." */
+    const fmt = (iso) => {
+      const d = toUTC(iso), base = `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+      return d.getUTCFullYear() === year ? base : `${base} ${d.getUTCFullYear() + 543}`;
+    };
+    const sorted = [...dates].sort();
+    const runs = [];
+    for (const iso of sorted) {
+      const last = runs[runs.length - 1];
+      if (last && addDays(last[1], 1) === iso) last[1] = iso; else runs.push([iso, iso]);
+    }
+    return runs.map(([a, b]) => {
+      if (a === b) return fmt(a);
+      const x = toUTC(a), y = toUTC(b);
+      if (x.getUTCFullYear() === y.getUTCFullYear() && x.getUTCMonth() === y.getUTCMonth()) return `${x.getUTCDate()}-${fmt(b)}`;
+      return `${fmt(a)} - ${fmt(b)}`;
+    }).join(', ');
+  }
+
+  /* ---------- Rules ---------- */
+  /* Splits a range into the days that count as leave and the days that do not, with the reason. */
+  function splitRange(start, end, holidays) {
+    const dates = [], skipped = [];
+    for (let iso = start, i = 0; iso <= end && i <= MAX_RANGE_DAYS; iso = addDays(iso, 1), i++) {
+      if (holidays[iso]) skipped.push({ date: iso, why: holidays[iso] });
+      else if (isWeekend(iso)) skipped.push({ date: iso, why: 'วัน' + DAYS[dow(iso)] });
+      else dates.push(iso);
+    }
+    return { dates, skipped };
+  }
+  /* The balance is never stored. It is always quota entries minus days taken, so the two cannot drift apart. */
+  const quotaTotal = (e, t) => S.quotaEntries.reduce((n, q) => (q.employeeId === e && q.typeId === t ? n + q.delta : n), 0);
+  const daysUsed = (e, t) => S.leaves.reduce((n, l) => (l.employeeId === e && l.typeId === t ? n + l.dates.length : n), 0);
+  const remaining = (e, t) => quotaTotal(e, t) - daysUsed(e, t);
+
+  /* Every pair of different people who are off on the same day. */
+  function overlapPairs() {
+    const byDate = new Map();
+    for (const l of S.leaves) for (const d of l.dates) {
+      if (!byDate.has(d)) byDate.set(d, new Set());
+      byDate.get(d).add(l.employeeId);
+    }
+    const pairs = new Map();
+    for (const [d, people] of byDate) {
+      const ids = [...people].sort();
+      for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+        const key = ids[i] + '|' + ids[j];
+        if (!pairs.has(key)) pairs.set(key, { a: ids[i], b: ids[j], dates: [] });
+        pairs.get(key).dates.push(d);
+      }
+    }
+    return [...pairs.values()];
+  }
+  /* Who a proposed set of dates would collide with. */
+  function overlapsFor(employeeId, dates) {
+    const wanted = new Set(dates), hits = new Map();
+    for (const l of S.leaves) {
+      if (l.employeeId === employeeId) continue;
+      for (const d of l.dates) if (wanted.has(d)) {
+        if (!hits.has(l.employeeId)) hits.set(l.employeeId, new Set());
+        hits.get(l.employeeId).add(d);
+      }
+    }
+    return [...hits].map(([id, set]) => ({ id, dates: [...set].sort() }));
+  }
+
+  function checkLeave(v) {
+    const r = { errors: [], dates: [], skipped: [], overlaps: [], after: null };
+    if (!S.ready) r.errors.push('กำลังโหลดข้อมูลล่าสุด รอสักครู่แล้วลองอีกครั้ง');
+    if (!v.emp) r.errors.push('เลือกพนักงาน');
+    if (!v.type) r.errors.push('เลือกประเภทการลา');
+    if (!isDate(v.start)) { r.errors.push('เลือกวันที่เริ่มลา'); return r; }
+    const end = isDate(v.end) ? v.end : v.start;
+    if (end < v.start) { r.errors.push('วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม'); return r; }
+    if ((toUTC(end) - toUTC(v.start)) / 864e5 > MAX_RANGE_DAYS) { r.errors.push('เลือกช่วงวันได้ไม่เกิน 1 ปีต่อรายการ'); return r; }
+    const split = splitRange(v.start, end, S.holidays);
+    r.dates = split.dates; r.skipped = split.skipped; r.end = end;
+    if (!r.dates.length) { r.noWorkdays = true; r.errors.push('ช่วงนี้ไม่มีวันทำงาน ลงวันลาไม่ได้'); return r; }
+    if (v.emp) {
+      const taken = new Set();
+      for (const l of S.leaves) if (l.employeeId === v.emp) for (const d of l.dates) taken.add(d);
+      const dup = r.dates.filter((d) => taken.has(d));
+      if (dup.length) r.errors.push(`${empName(v.emp)} มีวันลาอยู่แล้ววันที่ ${fmtDates(dup)}`);
+      r.overlaps = overlapsFor(v.emp, r.dates);
+    }
+    if (v.emp && v.type) {
+      const left = remaining(v.emp, v.type);
+      r.left = left; r.after = left - r.dates.length;
+      if (r.after < 0) r.errors.push(`${typeName(v.type)} เหลือ ${left} วัน แต่ต้องการลา ${r.dates.length} วัน จึงบันทึกไม่ได้`);
+    }
+    return r;
+  }
+
+  function checkQuota(v) {
+    const errors = [];
+    if (!S.ready) errors.push('กำลังโหลดข้อมูลล่าสุด รอสักครู่แล้วลองอีกครั้ง');
+    if (!v.type) errors.push('เลือกประเภทการลา');
+    if (!Number.isInteger(v.days) || v.days < 1) errors.push('ใส่จำนวนวันเป็นเลขเต็ม ตั้งแต่ 1 ขึ้นไป');
+    const t = S.leaveTypes.find((x) => x.id === v.type);
+    if (t && t.requiresReason && !v.reason) errors.push(`ระบุว่า${reasonLabel(t)}`);
+    if (v.type && v.dir < 0 && Number.isInteger(v.days) && remaining(v.emp, v.type) - v.days < 0) {
+      errors.push(`ลดไม่ได้ ${empName(v.emp)} เหลือ${typeName(v.type)} ${remaining(v.emp, v.type)} วัน`);
+    }
+    return errors;
+  }
+
+  function checkSwap(v) {
+    const errors = [];
+    if (!S.ready) errors.push('กำลังโหลดข้อมูลล่าสุด รอสักครู่แล้วลองอีกครั้ง');
+    if (!isDate(v.date)) errors.push('เลือกวันที่หยุด');
+    if (!v.emp) errors.push('เลือกคนที่หยุด');
+    if (!v.rep) errors.push('เลือกคนที่มาแทน');
+    if (v.emp && v.rep && v.emp === v.rep) errors.push('คนที่หยุดกับคนที่มาแทนต้องเป็นคนละคน');
+    if (S.swaps.some((s) => s.date === v.date && s.employeeId === v.emp)) errors.push(`${empName(v.emp)} มีรายการแลกเวรวันนี้อยู่แล้ว`);
+    return errors;
+  }
+
+  /* ---------- State and lookups ---------- */
+  const COLLECTIONS = ['employees', 'positions', 'leaveTypes', 'quotaEntries', 'leaves', 'swaps', 'holidays', 'settings'];
+  const S = { db: null, editCode: '', view: 'overview', readOnly: true, ready: false, personId: null, renaming: false, calMonth: todayISO().slice(0, 7), editPos: null, editPosName: '', employees: [], positions: [], leaveTypes: [], quotaEntries: [], leaves: [], swaps: [], holidays: {}, settings: [] };
+  const fresh = new Set();
+  /* The position an employee holds is stored by id in `desk`, so renaming a position updates everyone at once. */
+  const positionName = (id) => { const p = S.positions.find((x) => x.id === id); return p ? p.name : ''; };
+  const DUTY_DAYS = [[1, 'จ', 'จันทร์'], [2, 'อ', 'อังคาร'], [3, 'พ', 'พุธ'], [4, 'พฤ', 'พฤหัสบดี'], [5, 'ศ', 'ศุกร์']];
+  /* The order people chose by hand. People added before ordering existed have none: they are the oldest, so they stay on top. */
+  const byOrder = (a, b) => (a.order ?? -Infinity) - (b.order ?? -Infinity) || (a.createdAt || '').localeCompare(b.createdAt || '') || th(a.name, b.name);
+  /* Writes run one at a time, each from the latest state, so quick repeated clicks cannot overwrite each other. */
+  let writeChain = Promise.resolve();
+  const queued = (step) => { writeChain = writeChain.then(step).catch(() => {}); return writeChain; };
+
+  const $ = (id) => document.getElementById(id);
+  const th = (a, b) => String(a).localeCompare(String(b), 'th');
+  const empName = (id) => { const e = S.employees.find((x) => x.id === id); return e ? e.name : 'ไม่พบชื่อ'; };
+  const typeName = (id) => { const t = S.leaveTypes.find((x) => x.id === id); return t ? t.name : 'ไม่พบประเภท'; };
+  const activeEmployees = () => S.employees.filter((e) => e.active !== false);
+  const reasonLabel = (t) => (t.name === 'หยุดชดเชย' ? 'ชดเชยเรื่องอะไร' : 'เหตุผล');
+  /* Short label for the brackets on the overview: "ลาพักร้อน" reads "พักร้อน", "หยุดชดเชย" reads "ชดเชย". */
+  const typeShort = (id) => { const n = typeName(id); return n.replace(/^(ลา|หยุด)/, '') || n; };
+
+  /* One person's days off from this year onward, leave and shift swaps together, in date order. */
+  function daysOffFor(id) {
+    const today = todayISO(), yearStart = today.slice(0, 4) + '-01-01', items = [];
+    for (const l of S.leaves) {
+      if (l.employeeId !== id) continue;
+      const dates = l.dates.filter((d) => d >= yearStart).sort();
+      if (dates.length) items.push({ first: dates[0], last: dates[dates.length - 1], text: `${fmtDates(dates, true)} (${typeShort(l.typeId)})` });
+    }
+    for (const s of S.swaps) {
+      if (s.employeeId === id && s.date >= yearStart) items.push({ first: s.date, last: s.date, text: `${fmtDates([s.date], true)} (แลกเวร)` });
+    }
+    return items.sort((a, b) => a.first.localeCompare(b.first)).map((x) => ({ text: x.text, past: x.last < today }));
+  }
+
+  function el(tag, props, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (k === 'class') n.className = v; else if (k === 'text') n.textContent = v; else if (k.startsWith('on')) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+    }
+    for (const c of kids) if (c !== null && c !== undefined) n.append(c);
+    return n;
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 5000);
+  }
+  function setStatus(msg, bad) {
+    const s = $('status');
+    s.textContent = msg || ''; s.hidden = !msg; s.className = bad ? 'banner bad' : 'banner';
+  }
+  function setReadOnly(on) {
+    S.readOnly = on;
+    document.body.classList.toggle('readonly', on);
+    showEditState();
+    render();
+  }
+  function showEditState() {
+    const asking = !$('edit-form').hidden;
+    $('edit-open').hidden = !S.readOnly || asking;
+    $('edit-on').hidden = S.readOnly;
+  }
+
+  /* Every write goes through here. The caller builds its refs first so a retry rewrites the same documents. */
+  async function save(fn, okMsg) {
+    if (!S.db) { toast('ยังเชื่อมต่อฐานข้อมูลไม่ได้'); return false; }
+    try {
+      try { await fn(); }
+      catch (e) {
+        if (e && e.code === 'unavailable') { await new Promise((r) => setTimeout(r, 400 + Math.random() * 600)); await fn(); }
+        else throw e;
+      }
+      if (okMsg) toast(okMsg);
+      return true;
+    } catch (e) {
+      const code = e && e.code;
+      if (code === 'unauthorized' || code === 'locked') {
+        S.editCode = '';
+        rememberCode('');
+        setStatus(code === 'locked' ? 'ใส่รหัสผิดหลายครั้ง รอ 5 นาทีแล้วลองใหม่' : 'รหัสแก้ไขถูกเปลี่ยนแล้ว ใส่รหัสใหม่อีกครั้ง ข้อมูลล่าสุดยังไม่ถูกบันทึก');
+        setReadOnly(true);
+      } else if (code === 'invalid_argument') {
+        toast('บันทึกไม่สำเร็จ ข้อมูลนี้ยาวเกินไปหรือไม่ถูกต้อง');
+      } else {
+        toast('บันทึกไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง');
+      }
+      return false;
+    }
+  }
+
+  /* Two-step delete: the viewer's frame never shows confirm(). */
+  function delBtn(label, onConfirm) {
+    let armed = false, timer;
+    const b = el('button', { type: 'button', class: 'small', 'data-write': '', text: label });
+    b.addEventListener('click', () => {
+      if (armed) { clearTimeout(timer); onConfirm(); return; }
+      armed = true; b.textContent = 'กดอีกครั้งเพื่อยืนยัน'; b.classList.add('armed');
+      timer = setTimeout(() => { armed = false; b.textContent = label; b.classList.remove('armed'); }, 4000);
+    });
+    return b;
+  }
+
+  function fillSelect(sel, options, placeholder) {
+    const keep = sel.value;
+    sel.replaceChildren();
+    if (placeholder) sel.append(el('option', { value: '', text: placeholder }));
+    for (const o of options) sel.append(el('option', { value: o.value, text: o.label }));
+    if ([...sel.options].some((o) => o.value === keep)) sel.value = keep;
+  }
+  function emptyNote(text, action) {
+    return el('div', { class: 'empty' }, el('p', { text }), action || null);
+  }
+
+  /* ---------- Rendering ---------- */
+  function render() {
+    /* Rows are rebuilt from state, so keep keyboard focus on the same control. */
+    const focusKey = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fkey : null;
+    renderToday(); renderOverview(); renderLeaveSummary(); renderSelects();
+    renderLeaveList(); renderSwapList(); renderCalendar(); renderFriday(); renderHoliday(); renderSetup(); renderPerson();
+    previewLeave(); previewQuota(); previewSwap();
+    if (focusKey) {
+      const again = document.querySelector(`[data-fkey="${CSS.escape(focusKey)}"]`);
+      if (again && !again.disabled) again.focus();
+    }
+  }
+
+  function renderToday() {
+    const today = todayISO();
+    $('today-line').textContent = `วัน${DAYS[dow(today)]}ที่ ${fmtDate(today)}`;
+    const names = offTodayNames(), line = $('today-off');
+    line.replaceChildren();
+    if (names.length) line.append('วันนี้หยุด ', el('b', { text: names.join(', ') }));
+    else line.append('วันนี้ไม่มีคนหยุด');
+  }
+
+  function offTodayNames() {
+    const today = todayISO(), off = new Set();
+    for (const l of S.leaves) if (l.dates.includes(today)) off.add(l.employeeId);
+    for (const s of S.swaps) if (s.date === today) off.add(s.employeeId);
+    return S.employees.filter((e) => off.has(e.id)).map((e) => e.name);
+  }
+
+  /* Overlaps split into still to come and already past, earliest first. */
+  function overlapSummary() {
+    const today = todayISO(), now = [], past = [];
+    for (const p of overlapPairs()) {
+      const coming = p.dates.filter((d) => d >= today), gone = p.dates.filter((d) => d < today);
+      if (coming.length) now.push({ ...p, dates: coming });
+      if (gone.length) past.push({ ...p, dates: gone });
+    }
+    const byDate = (x, y) => [...x.dates].sort()[0].localeCompare([...y.dates].sort()[0]);
+    return { now: now.sort(byDate), past: past.sort(byDate).reverse() };
+  }
+
+  /* The overview only says who people are and which duty days they hold. */
+  function renderOverview() {
+    const inactive = S.employees.filter((e) => e.active === false);
+    $('inactive-box').hidden = !inactive.length;
+    $('inactive-title').textContent = `พนักงานที่ปิดใช้งาน ${inactive.length} คน`;
+    $('inactive-list').replaceChildren(...inactive.map((e) => el('li', null, personLink(e))));
+
+    const box = $('people'), people = activeEmployees();
+    if (!people.length) {
+      box.replaceChildren(emptyNote(S.ready ? 'ยังไม่มีพนักงาน ใส่ชื่อคนแรกในช่องด้านบน' : 'รายชื่อพนักงานจะแสดงที่นี่ กำลังโหลดข้อมูล'));
+      return;
+    }
+    const head = el('tr', null, el('th', { scope: 'col', text: 'ชื่อ' }), el('th', { scope: 'col', text: 'ตำแหน่ง' }), el('th', { scope: 'col', text: 'เวรปิดหน้า' }),
+      S.readOnly ? null : el('th', { scope: 'col', text: 'ลำดับ' }));
+    const rows = people.map((p, i) => el('tr', null,
+      el('th', { scope: 'row', class: 'c-name' }, personLink(p)),
+      el('td', { class: 'c-pos' }, deskControl(p)),
+      el('td', { class: 'c-duty' }, dutyChips(p)),
+      S.readOnly ? null : el('td', { class: 'c-move' }, moveButtons(p, i === 0, i === people.length - 1))));
+    box.replaceChildren(el('div', { class: 'table-scroll' },
+      el('table', { class: 'people' }, el('thead', null, head), el('tbody', null, ...rows))));
+  }
+
+  /* Everything about leave lives together on the leave page. */
+  function renderLeaveSummary() {
+    const { now, past } = overlapSummary();
+    const item = (p) => el('li', null,
+      el('b', { text: empName(p.a) }), ' ลาตรงกับ ', el('b', { text: empName(p.b) }), ` ${p.dates.length} วัน`,
+      el('span', { class: 'when', text: fmtDates(p.dates) }));
+    $('alerts-now').replaceChildren(...now.map(item));
+    $('alerts-now').hidden = !now.length;
+    $('alerts-past').replaceChildren(...past.map(item));
+    $('alerts-past-box').hidden = !past.length;
+    $('alerts-past-title').textContent = `ลาตรงกันที่ผ่านไปแล้ว ${past.length} คู่`;
+    $('alerts-section').hidden = !now.length && !past.length;
+    const badge = $('tab-alerts');
+    badge.textContent = now.length; badge.hidden = !now.length;
+
+    const box = $('standings'), people = activeEmployees();
+    if (!people.length || !S.leaveTypes.length) {
+      box.replaceChildren(emptyNote(S.ready
+        ? 'ยังไม่มีพนักงาน เพิ่มชื่อได้ที่หน้าภาพรวม แล้ววันลาคงเหลือของแต่ละคนจะแสดงที่นี่'
+        : 'วันลาคงเหลือของแต่ละคนจะแสดงที่นี่ กำลังโหลดข้อมูล'));
+      return;
+    }
+    const head = el('tr', null, el('th', { class: 'person', scope: 'col', text: 'พนักงาน' }),
+      ...S.leaveTypes.map((t) => el('th', { class: 'num', scope: 'col', text: t.name })));
+    const rows = [];
+    for (const p of people) {
+      const off = daysOffFor(p.id);
+      rows.push(el('tr', off.length ? { class: 'has-off' } : null, el('th', { class: 'person', scope: 'row' }, personLink(p)),
+        ...S.leaveTypes.map((t) => balanceCell(p.id, t.id))));
+      if (off.length) {
+        rows.push(el('tr', { class: 'off-row' }, el('td', { colspan: String(S.leaveTypes.length + 1) },
+          el('div', { class: 'offdays' }, ...off.map((o) => el('span', { class: o.past ? 'past' : '', text: o.text }))))));
+      }
+    }
+    box.replaceChildren(el('div', { class: 'table-scroll' },
+      el('table', { class: 'standings' }, el('thead', null, head), el('tbody', null, ...rows))));
+  }
+
+  function deskControl(e) {
+    if (S.readOnly) return el('span', { class: 'desk', text: positionName(e.desk) || 'ยังไม่ระบุตำแหน่ง' });
+    const ref = S.db ? S.db.collection('employees').doc(e.id) : null;
+    const desk = el('select', { 'aria-label': `ตำแหน่งของ ${e.name}`, 'data-fkey': `desk-${e.id}` },
+      el('option', { value: '', text: 'ยังไม่ระบุตำแหน่ง' }),
+      ...S.positions.map((p) => el('option', { value: p.id, text: p.name })));
+    desk.value = positionName(e.desk) ? e.desk : '';
+    desk.addEventListener('change', () => {
+      const value = desk.value;
+      queued(() => save(() => ref.update({ desk: value }), `เปลี่ยนตำแหน่งของ ${e.name} แล้ว`));
+    });
+    return desk;
+  }
+
+  function dutyChips(e) {
+    const days = Array.isArray(e.dutyDays) ? e.dutyDays : [];
+    const duty = el('span', { class: 'duty' }, el('span', { class: 'lbl', text: 'เวรปิดหน้า' }), ...DUTY_DAYS.map(([n, short, full]) => {
+      const props = { type: 'button', class: 'chip', text: short, title: `วัน${full}`, 'aria-label': `เวรปิดหน้าวัน${full} ของ ${e.name}`, 'aria-pressed': String(days.includes(n)), 'data-fkey': `duty-${e.id}-${n}` };
+      if (S.readOnly) props.disabled = '';
+      return el('button', props, null);
+    }));
+    duty.querySelectorAll('.chip').forEach((chip, i) => chip.addEventListener('click', () => toggleDuty(e.id, DUTY_DAYS[i][0])));
+    return duty;
+  }
+
+  function moveButtons(e, first, last) {
+    const up = { type: 'button', text: '▲', 'aria-label': `เลื่อน ${e.name} ขึ้น`, 'data-fkey': `up-${e.id}`, onclick: () => moveEmployee(e.id, -1) };
+    const down = { type: 'button', text: '▼', 'aria-label': `เลื่อน ${e.name} ลง`, 'data-fkey': `down-${e.id}`, onclick: () => moveEmployee(e.id, 1) };
+    if (first) up.disabled = '';
+    if (last) down.disabled = '';
+    return el('span', { class: 'move' }, el('button', up), el('button', down));
+  }
+
+  function toggleDuty(id, day) {
+    queued(() => {
+      const e = S.employees.find((x) => x.id === id);
+      if (!e) return null;
+      const days = Array.isArray(e.dutyDays) ? e.dutyDays : [];
+      const next = days.includes(day) ? days.filter((d) => d !== day) : [...days, day].sort((a, b) => a - b);
+      const ref = S.db.collection('employees').doc(id);
+      return save(() => ref.update({ dutyDays: next }));
+    });
+  }
+
+  function moveEmployee(id, step) {
+    queued(() => {
+      const all = [...S.employees], active = all.filter((e) => e.active !== false);
+      const i = active.findIndex((e) => e.id === id), other = active[i + step];
+      if (i < 0 || !other) return null;
+      const a = all.indexOf(active[i]), b = all.indexOf(other);
+      [all[a], all[b]] = [all[b], all[a]];
+      const changes = all.map((e, k) => ({ ref: S.db.collection('employees').doc(e.id), order: k + 1, was: e.order })).filter((c) => c.was !== c.order);
+      /* Sent together in one request, so moving a name does not wait on one request per person. */
+      return save(() => Promise.all(changes.map((c) => c.ref.update({ order: c.order }))));
+    });
+  }
+
+  function personLink(e) {
+    return el('button', { type: 'button', class: 'person-link', text: e.name, onclick: () => openPerson(e.id) });
+  }
+  function balanceCell(empId, typeId) {
+    const left = remaining(empId, typeId), total = quotaTotal(empId, typeId);
+    return el('td', { class: 'num' },
+      el('span', { class: 'remain' + (left < 0 ? ' neg' : left === 0 ? ' zero' : ''), text: left }),
+      el('span', { class: 'of', text: ` / ${total}` }));
+  }
+
+  function renderSelects() {
+    const people = activeEmployees().map((e) => ({ value: e.id, label: e.name }));
+    const everyone = S.employees.map((e) => ({ value: e.id, label: e.name }));
+    fillSelect($('emp-desk'), S.positions.map((p) => ({ value: p.id, label: p.name })), 'เลือกตำแหน่ง');
+    fillSelect($('leave-emp'), people, 'เลือกพนักงาน');
+    fillSelect($('swap-emp'), people, 'เลือกพนักงาน');
+    fillSelect($('swap-rep'), people, 'เลือกพนักงาน');
+    fillSelect($('leave-filter'), everyone, 'ทุกคน');
+    fillSelect($('friday-emp'), people, 'เลือกคนอยู่เวร');
+    const emp = $('leave-emp').value;
+    fillSelect($('leave-type'), S.leaveTypes.map((t) => ({
+      value: t.id, label: emp ? `${t.name} (เหลือ ${remaining(emp, t.id)} วัน)` : t.name,
+    })), 'เลือกประเภท');
+    fillSelect($('quota-type'), S.leaveTypes.map((t) => ({ value: t.id, label: t.name })), 'เลือกประเภท');
+  }
+
+  function renderLeaveList() {
+    const who = $('leave-filter').value, box = $('leave-list');
+    const list = S.leaves.filter((l) => !who || l.employeeId === who).sort((a, b) => b.startDate.localeCompare(a.startDate));
+    if (!list.length) { box.replaceChildren(emptyNote('ยังไม่มีรายการลา การลาที่บันทึกแล้วจะแสดงที่นี่')); return; }
+    box.replaceChildren(el('ul', { class: 'rows' }, ...list.map((l) => leaveRow(l, true))));
+  }
+
+  function leaveRow(l, withName) {
+    return el('li', null,
+      el('span', { class: 'main' },
+        withName ? el('b', { text: empName(l.employeeId) + ' ' }) : null, `${typeName(l.typeId)} ${l.dates.length} วัน`,
+        el('span', { class: 'sub', text: fmtDates(l.dates) + (l.note ? ` · ${l.note}` : '') })),
+      el('span', { class: 'actions' }, delBtn('ลบ', () => {
+        const ref = S.db.collection('leaves').doc(l.id);
+        save(() => ref.delete(), `ลบแล้ว คืน ${typeName(l.typeId)} ${l.dates.length} วันให้ ${empName(l.employeeId)}`);
+      })));
+  }
+
+  function renderQuotaList(personId) {
+    const box = $('quota-list');
+    const list = S.quotaEntries.filter((q) => q.employeeId === personId).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    if (!list.length) { box.replaceChildren(emptyNote('ยังไม่มีรายการโควตาของคนนี้ เพิ่มโควตาแล้วรายการจะแสดงที่นี่')); return; }
+    box.replaceChildren(el('ul', { class: 'rows' }, ...list.map((q) => el('li', null,
+      el('span', { class: 'main' },
+        `${typeName(q.typeId)} `,
+        el('span', { class: q.delta > 0 ? 'plus' : 'minus', text: `${q.delta > 0 ? '+' : ''}${q.delta} วัน` }),
+        q.reason ? el('span', { class: 'sub', text: q.reason }) : null),
+      el('span', { class: 'actions' }, delBtn('ลบ', () => {
+        if (S.ready && remaining(q.employeeId, q.typeId) - q.delta < 0) {
+          toast(`ลบไม่ได้ เพราะ ${empName(q.employeeId)} จะมี${typeName(q.typeId)}ติดลบ`);
+          render();
+          return;
+        }
+        const ref = S.db.collection('quotaEntries').doc(q.id);
+        save(() => ref.delete(), 'ลบรายการโควตาแล้ว');
+      }))))));
+  }
+
+  function renderSwapList() {
+    const box = $('swap-list');
+    const list = [...S.swaps].sort((a, b) => b.date.localeCompare(a.date));
+    if (!list.length) { box.replaceChildren(emptyNote('ยังไม่มีรายการแลกเวร ใครหยุดและใครมาแทนจะแสดงที่นี่')); return; }
+    box.replaceChildren(el('ul', { class: 'rows' }, ...list.map((s) => el('li', null,
+      el('span', { class: 'main' },
+        el('b', { text: empName(s.employeeId) }), ' หยุด ', el('b', { text: empName(s.replacementId) }), ' มาแทน',
+        el('span', { class: 'sub', text: `วัน${DAYS[dow(s.date)]}ที่ ${fmtDate(s.date)}` + (S.holidays[s.date] ? ` (${S.holidays[s.date]})` : '') + (s.note ? ` · ${s.note}` : '') })),
+      el('span', { class: 'actions' }, delBtn('ลบ', () => {
+        const ref = S.db.collection('swaps').doc(s.id);
+        save(() => ref.delete(), 'ลบรายการแลกเวรแล้ว');
+      }))))));
+  }
+
+  function hasHistory(id) {
+    return S.leaves.some((l) => l.employeeId === id) || S.quotaEntries.some((q) => q.employeeId === id)
+      || S.swaps.some((s) => s.employeeId === id || s.replacementId === id)
+      || holidayGroups().some((g) => g.members.includes(id))
+      || fridayRows().some((f) => f.employeeId === id);
+  }
+
+  /* ---------- Holiday duty: one document, so swapping two people between groups is a single write ---------- */
+  function holidayGroups() {
+    const doc = S.settings.find((x) => x.id === 'holidayDuty');
+    return doc && Array.isArray(doc.groups) ? doc.groups.map((g) => ({ ...g, members: Array.isArray(g.members) ? g.members : [] })) : [];
+  }
+  function writeGroups(groups, msg) {
+    const ref = S.db.collection('settings').doc('holidayDuty');
+    return save(() => ref.set({ groups }), msg);
+  }
+  function changeMember(groupId, index, newId) {
+    queued(() => {
+      const groups = holidayGroups(), group = groups.find((g) => g.id === groupId);
+      if (!group || group.members[index] === newId) return null;
+      const oldId = group.members[index];
+      let other = null;
+      for (const g of groups) {
+        const at = g.members.indexOf(newId);
+        if (at >= 0) { g.members[at] = oldId; other = g; }
+      }
+      group.members[index] = newId;
+      const msg = other && other.id !== group.id
+        ? `สลับเวรแล้ว ${empName(newId)} มา${group.name} และ ${empName(oldId)} ไป${other.name}`
+        : `เปลี่ยนเป็น ${empName(newId)} แล้ว`;
+      return writeGroups(groups, msg);
+    });
+  }
+  function removeMember(groupId, index) {
+    queued(() => {
+      const groups = holidayGroups(), group = groups.find((g) => g.id === groupId);
+      if (!group) return null;
+      const [gone] = group.members.splice(index, 1);
+      return writeGroups(groups, `เอา ${empName(gone)} ออกจาก${group.name}แล้ว`);
+    });
+  }
+  function addMember(groupId, id) {
+    queued(() => {
+      const groups = holidayGroups(), group = groups.find((g) => g.id === groupId);
+      if (!group || groups.some((g) => g.members.includes(id))) return null;
+      group.members.push(id);
+      return writeGroups(groups, `เพิ่ม ${empName(id)} ใน${group.name}แล้ว`);
+    });
+  }
+
+  function scheduleRows() {
+    const doc = S.settings.find((x) => x.id === 'holidaySchedule');
+    return doc && Array.isArray(doc.rows) ? [...doc.rows].sort((a, b) => a.date.localeCompare(b.date)) : [];
+  }
+
+  /* What one calendar day says. A swap recorded for that date replaces the name, so the calendar shows who actually comes in. */
+  function calendarDay(date) {
+    const row = scheduleRows().find((r) => r.date === date);
+    const groups = holidayGroups(), swaps = S.swaps.filter((s) => s.date === date);
+    const groupName = (id) => { const g = groups.find((x) => x.id === id); return g ? g.name : id; };
+    const members = row ? (groups.find((g) => g.id === row.work) || { members: [] }).members : [];
+    const onDuty = (id) => {
+      const s = swaps.find((x) => x.employeeId === id);
+      return s ? `${empName(s.replacementId)} (แทน ${empName(id)})` : empName(id);
+    };
+    /* Newspaper duty is weekly and runs Monday to Friday. A public holiday follows the holiday roster instead. */
+    const pressIds = !row && !isWeekend(date) && !S.holidays[date]
+      ? activeEmployees().filter((e) => Array.isArray(e.dutyDays) && e.dutyDays.includes(dow(date))).map((e) => e.id)
+      : [];
+    /* Friday duty for domestic reporters is set date by date, so it shows even on a public holiday. */
+    const friday = fridayRows().find((f) => f.date === date);
+    const weekly = friday ? pressIds.filter((id) => id !== friday.employeeId) : pressIds;
+    const onLeave = (id) => (S.leaves.some((l) => l.employeeId === id && l.dates.includes(date)) ? ' (ลา)' : '');
+    return {
+      holiday: S.holidays[date] || (row && row.label) || '',
+      group: row ? groupName(row.work) : '',
+      names: members.map(onDuty),
+      press: [
+        ...weekly.map((id) => onDuty(id) + onLeave(id)),
+        ...(friday ? [onDuty(friday.employeeId) + (friday.note ? ` (${friday.note})` : '') + onLeave(friday.employeeId)] : []),
+      ],
+      off: row && row.off.length ? `หยุด ${row.off.map(groupName).join(', ')}` : '',
+      extra: swaps.filter((s) => !members.includes(s.employeeId) && !pressIds.includes(s.employeeId) && !(friday && friday.employeeId === s.employeeId)).map((s) => `แลกเวร ${empName(s.employeeId)} หยุด ${empName(s.replacementId)} มาแทน`),
+    };
+  }
+
+  /* Weeks of a yyyy-mm month, Sunday first, with null for the days outside it. */
+  function monthWeeks(ym) {
+    const first = `${ym}-01`, weeks = [];
+    let week = new Array(dow(first)).fill(null);
+    for (let d = first; d.slice(0, 7) === ym; d = addDays(d, 1)) {
+      week.push(d);
+      if (week.length === 7) { weeks.push(week); week = []; }
+    }
+    if (week.length) weeks.push([...week, ...new Array(7 - week.length).fill(null)]);
+    return weeks;
+  }
+  const monthLabel = (ym) => { const [y, m] = ym.split('-').map(Number); return `${MONTHS_FULL[m - 1]} ${y + 543}`; };
+
+  /* Friday newspaper duty: one document, like the holiday roster, so one change is one write. */
+  function fridayRows() {
+    const doc = S.settings.find((x) => x.id === 'fridayDuty');
+    return doc && Array.isArray(doc.rows) ? [...doc.rows].sort((a, b) => a.date.localeCompare(b.date)) : [];
+  }
+  function writeFriday(rows, msg) {
+    const ref = S.db.collection('settings').doc('fridayDuty');
+    return save(() => ref.set({ rows }), msg);
+  }
+  function changeFriday(date, patch, msg) {
+    queued(() => writeFriday(fridayRows().map((f) => (f.date === date ? { ...f, ...patch } : f)), msg));
+  }
+
+  function renderFriday() {
+    const box = $('friday-list'), rows = fridayRows();
+    if (!rows.length) { box.replaceChildren(emptyNote(S.ready ? 'ยังไม่มีเวรปิดหน้าวันศุกร์' : 'เวรปิดหน้าวันศุกร์จะแสดงที่นี่ กำลังโหลดข้อมูล')); return; }
+    const active = activeEmployees();
+    const row = (f) => {
+      const label = el('span', { class: 'main' }, el('b', { text: `วัน${DAYS[dow(f.date)]}ที่ ${fmtDate(f.date)}` }));
+      if (S.readOnly) {
+        label.append(el('span', { class: 'sub', text: empName(f.employeeId) + (f.note ? ` (${f.note})` : '') }));
+        return el('li', null, label);
+      }
+      const choices = active.some((e) => e.id === f.employeeId) ? active : [...S.employees.filter((e) => e.id === f.employeeId), ...active];
+      const select = el('select', { 'aria-label': `คนอยู่เวรวันที่ ${fmtDate(f.date)}`, 'data-fkey': `friday-${f.date}` },
+        ...choices.map((e) => el('option', { value: e.id, text: e.name })));
+      select.value = f.employeeId;
+      select.addEventListener('change', () => changeFriday(f.date, { employeeId: select.value }, `เปลี่ยนเวร ${fmtDate(f.date)} เป็น ${empName(select.value)} แล้ว`));
+      const note = el('input', { type: 'text', value: f.note || '', maxlength: '80', placeholder: 'หมายเหตุ', 'aria-label': `หมายเหตุวันที่ ${fmtDate(f.date)}`, 'data-fkey': `friday-note-${f.date}` });
+      note.addEventListener('change', () => changeFriday(f.date, { note: note.value.trim() }, 'บันทึกหมายเหตุแล้ว'));
+      const remove = delBtn('ลบ', () => queued(() => writeFriday(fridayRows().filter((x) => x.date !== f.date), `ลบเวร ${fmtDate(f.date)} แล้ว`)));
+      return el('li', null, label, el('span', { class: 'member', style: 'flex:1 1 100%' }, select, note, remove));
+    };
+    const today = todayISO(), coming = rows.filter((f) => f.date >= today), gone = rows.filter((f) => f.date < today);
+    const kids = [coming.length ? el('ul', { class: 'rows' }, ...coming.map(row)) : emptyNote('ไม่มีเวรที่จะถึง เพิ่มได้จากฟอร์มด้านบน')];
+    if (gone.length) kids.push(el('details', null, el('summary', { text: `ผ่านไปแล้ว ${gone.length} วัน` }), el('ul', { class: 'rows', style: 'margin-top:8px' }, ...gone.map(row))));
+    box.replaceChildren(el('div', { class: 'section' }, ...kids));
+  }
+
+  function renderCalendar() {
+    const ym = S.calMonth, today = todayISO();
+    $('cal-title').textContent = `ปฏิทินเวร ${monthLabel(ym)}`;
+    const cell = (date) => {
+      if (!date) return el('td', { class: 'blank' });
+      const day = calendarDay(date);
+      const cls = [day.holiday ? 'holiday' : isWeekend(date) ? 'weekend' : '', date === today ? 'today' : ''].filter(Boolean).join(' ');
+      return el('td', cls ? { class: cls } : null,
+        el('span', { class: 'cal-day', text: toUTC(date).getUTCDate() }),
+        day.holiday ? el('span', { class: 'cal-holiday', text: day.holiday }) : null,
+        day.group ? el('span', { class: 'cal-group', text: day.group }) : null,
+        ...day.names.map((n) => el('span', { class: 'cal-name', text: n })),
+        day.press.length ? el('span', { class: 'cal-press', text: 'ปิดหน้า' }) : null,
+        ...day.press.map((n) => el('span', { class: 'cal-name', text: n })),
+        day.off ? el('span', { class: 'cal-note', text: day.off }) : null,
+        ...day.extra.map((n) => el('span', { class: 'cal-note', text: n })));
+    };
+    const head = el('tr', null, ...DAYS_SHORT.map((d) => el('th', { scope: 'col', text: d })));
+    const table = el('table', { class: 'cal' }, el('thead', null, head),
+      el('tbody', null, ...monthWeeks(ym).map((w) => el('tr', null, ...w.map(cell)))));
+    const none = S.ready && !scheduleRows().some((r) => r.date.startsWith(ym));
+    $('holiday-calendar').replaceChildren(el('div', { class: 'section' },
+      el('div', { class: 'table-scroll' }, table),
+      none ? el('p', { class: 'hint', text: 'เดือนนี้ยังไม่มีข้อมูลเวรในตาราง' }) : null));
+  }
+  function shiftMonth(step) {
+    const [y, m] = S.calMonth.split('-').map(Number);
+    const d = new Date(Date.UTC(y, m - 1 + step, 1));
+    S.calMonth = toISO(d).slice(0, 7);
+    renderCalendar();
+  }
+
+  /* Who works and who is off on each date. Names come from the groups, so a swap shows up here at once. */
+  function renderSchedule(groups) {
+    const box = $('holiday-schedule'), doc = S.settings.find((x) => x.id === 'holidaySchedule');
+    const rows = scheduleRows();
+    if (!rows.length) { box.replaceChildren(emptyNote(S.ready ? 'ยังไม่มีตารางเวร' : 'ตารางเวรจะแสดงที่นี่ กำลังโหลดข้อมูล')); return; }
+    const who = (id) => {
+      const g = groups.find((x) => x.id === id);
+      return g ? `${g.name} (${g.members.map(empName).join(', ') || 'ยังไม่มีชื่อ'})` : id;
+    };
+    const row = (r) => el('li', null, el('span', { class: 'main' },
+      el('b', { text: `วัน${DAYS[dow(r.date)]}ที่ ${fmtDate(r.date)}` }), r.label ? ` · ${r.label}` : null,
+      el('span', { class: 'sub', text: `ทำงาน: ${who(r.work)}` }),
+      el('span', { class: 'sub', text: `หยุด: ${r.off.map(who).join(' และ ')}` }),
+      ...S.swaps.filter((s) => s.date === r.date).map((s) => el('span', { class: 'sub', text: `แลกเวร: ${empName(s.employeeId)} หยุด ${empName(s.replacementId)} มาแทน` }))));
+    const today = todayISO(), coming = rows.filter((r) => r.date >= today), gone = rows.filter((r) => r.date < today);
+    const kids = [el('p', { class: 'hint', text: `ตารางนี้มีถึง ${fmtDate(rows[rows.length - 1].date)}` })];
+    kids.push(coming.length ? el('ul', { class: 'rows' }, ...coming.map(row)) : emptyNote('ไม่มีเวรที่จะถึงในตารางนี้'));
+    if (gone.length) kids.push(el('details', null, el('summary', { text: `ผ่านไปแล้ว ${gone.length} วัน` }), el('ul', { class: 'rows', style: 'margin-top:8px' }, ...gone.map(row))));
+    for (const note of Array.isArray(doc.notes) ? doc.notes : []) kids.push(el('p', { class: 'hint', text: note }));
+    box.replaceChildren(el('div', { class: 'section' }, ...kids));
+  }
+
+  function renderHoliday() {
+    const box = $('holiday-groups'), groups = holidayGroups();
+    renderSchedule(groups);
+    if (!groups.length) { box.replaceChildren(emptyNote(S.ready ? 'ยังไม่มีข้อมูลเวรวันหยุด' : 'เวรวันหยุดจะแสดงที่นี่ กำลังโหลดข้อมูล')); return; }
+    const groupOf = new Map();
+    for (const g of groups) for (const id of g.members) groupOf.set(id, g);
+    const active = activeEmployees();
+
+    const memberRow = (g, id, index) => {
+      if (S.readOnly) return el('li', null, el('span', { class: 'main', text: empName(id) }));
+      const choices = active.some((e) => e.id === id) ? active : [...S.employees.filter((e) => e.id === id), ...active];
+      const select = el('select', { 'aria-label': `ชื่อใน${g.name} ลำดับที่ ${index + 1}`, 'data-fkey': `member-${g.id}-${index}` },
+        ...choices.map((e) => {
+          const in_ = groupOf.get(e.id);
+          return el('option', { value: e.id, text: e.name + (in_ && in_.id !== g.id ? ` (${in_.name})` : '') });
+        }));
+      select.value = id;
+      select.addEventListener('change', () => changeMember(g.id, index, select.value));
+      return el('li', null, el('span', { class: 'member', style: 'flex:1 1 100%' }, select, delBtn('เอาออก', () => removeMember(g.id, index))));
+    };
+
+    box.replaceChildren(el('div', { class: 'roster' }, ...groups.map((g) => {
+      const free = active.filter((e) => !groupOf.has(e.id));
+      const add = free.length && !S.readOnly ? el('select', { 'aria-label': `เพิ่มชื่อใน${g.name}`, 'data-fkey': `add-${g.id}` },
+        el('option', { value: '', text: 'เพิ่มชื่อในเวรนี้' }), ...free.map((e) => el('option', { value: e.id, text: e.name }))) : null;
+      if (add) add.addEventListener('change', () => { if (add.value) addMember(g.id, add.value); });
+      return el('div', { class: 'roster-group' }, el('h3', { text: g.name }),
+        g.members.length ? el('ul', { class: 'rows' }, ...g.members.map((id, i) => memberRow(g, id, i))) : emptyNote('ยังไม่มีชื่อในเวรนี้'),
+        add);
+    })));
+  }
+
+  /* The page behind an employee's name: balances, quota changes, and their history. */
+  function renderPerson() {
+    if (!S.personId) return;
+    const e = S.employees.find((x) => x.id === S.personId);
+    if (!e) { closePerson(); return; }
+    if (!S.renaming) {
+      $('person-name').textContent = e.name + (e.active === false ? ' (ปิดใช้งาน)' : '');
+      renderPersonActions(e);
+    }
+    $('person-meta').replaceChildren(el('div', { class: 'meta' }, deskControl(e), dutyChips(e)));
+    const head = el('tr', null, ...S.leaveTypes.map((t) => el('th', { class: 'num', scope: 'col', text: t.name })));
+    $('person-balance').replaceChildren(el('div', { class: 'table-scroll' },
+      el('table', { class: 'standings' }, el('thead', null, head), el('tbody', null, el('tr', null, ...S.leaveTypes.map((t) => balanceCell(e.id, t.id)))))));
+    renderQuotaList(e.id);
+    const list = S.leaves.filter((l) => l.employeeId === e.id).sort((a, b) => b.startDate.localeCompare(a.startDate));
+    $('person-leaves').replaceChildren(list.length
+      ? el('ul', { class: 'rows' }, ...list.map((l) => leaveRow(l, false)))
+      : emptyNote('ยังไม่มีรายการลาของคนนี้'));
+  }
+
+  function renderPersonActions(e) {
+    const ref = S.db ? S.db.collection('employees').doc(e.id) : null;
+    const actions = $('person-actions');
+    const rename = el('button', { type: 'button', class: 'small', 'data-write': '', text: 'แก้ชื่อ' });
+    rename.addEventListener('click', () => {
+      S.renaming = true;
+      const input = el('input', { type: 'text', value: e.name, maxlength: '80', 'aria-label': 'ชื่อใหม่' });
+      const form = el('form', { class: 'inline-form' }, input, el('button', { type: 'submit', class: 'small', text: 'บันทึก' }));
+      form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const name = input.value.trim();
+        if (name && name !== e.name) {
+          if (S.employees.some((x) => x.id !== e.id && x.name === name)) { toast(`มีชื่อ ${name} อยู่แล้ว`); return; }
+          if (!await save(() => ref.update({ name }), 'แก้ชื่อแล้ว')) return;
+        }
+        S.renaming = false;
+        render();
+      });
+      $('person-name').replaceChildren();
+      actions.replaceChildren(form);
+      input.focus();
+    });
+    const kids = [rename];
+    if (e.active === false) {
+      kids.push(el('button', { type: 'button', class: 'small', 'data-write': '', text: 'เปิดใช้งาน', onclick: () => save(() => ref.update({ active: true }), `เปิดใช้งาน ${e.name} แล้ว`) }));
+    } else if (hasHistory(e.id)) {
+      kids.push(delBtn('ปิดใช้งาน', () => save(() => ref.update({ active: false }), `ปิดใช้งาน ${e.name} แล้ว ประวัติยังอยู่ครบ`)));
+    } else {
+      kids.push(delBtn('ลบพนักงาน', () => save(() => ref.delete(), `ลบ ${e.name} แล้ว`)));
+    }
+    actions.replaceChildren(...kids);
+  }
+
+  function openPerson(id) {
+    S.personId = id; S.renaming = false;
+    $('quota-type').value = ''; $('quota-days').value = ''; $('quota-reason').value = ''; $('quota-add').checked = true;
+    route(); render();
+    window.scrollTo(0, 0);
+    $('person-name').focus({ preventScroll: true });
+  }
+  function closePerson() {
+    S.personId = null; S.renaming = false;
+    route(); render();
+  }
+
+  function positionRow(p) {
+    const ref = S.db ? S.db.collection('positions').doc(p.id) : null;
+    if (S.editPos === p.id) {
+      const input = el('input', { type: 'text', value: S.editPosName, maxlength: '60', 'aria-label': 'ชื่อตำแหน่งใหม่', 'data-fkey': `pos-edit-${p.id}` });
+      input.addEventListener('input', () => { S.editPosName = input.value; });
+      const form = el('form', { class: 'inline-form', style: 'flex:1 1 100%' }, input,
+        el('button', { type: 'submit', class: 'small', text: 'บันทึก' }),
+        el('button', { type: 'button', class: 'small', text: 'ยกเลิก', onclick: () => { S.editPos = null; renderSetup(); } }));
+      form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const name = S.editPosName.trim();
+        if (!name) { toast('ใส่ชื่อตำแหน่ง'); return; }
+        if (S.positions.some((x) => x.id !== p.id && x.name === name)) { toast(`มีตำแหน่ง ${name} อยู่แล้ว`); return; }
+        if (name === p.name || await save(() => ref.update({ name }), `เปลี่ยนเป็น ${name} แล้ว`)) { S.editPos = null; renderSetup(); }
+      });
+      return el('li', null, form);
+    }
+    const count = S.employees.filter((e) => e.desk === p.id).length;
+    return el('li', null,
+      el('span', { class: 'main' }, p.name, el('span', { class: 'sub', text: count ? `มี ${count} คน` : 'ยังไม่มีคนในตำแหน่งนี้' })),
+      el('span', { class: 'actions' },
+        el('button', { type: 'button', class: 'small', 'data-write': '', text: 'แก้ชื่อ', onclick: () => { S.editPos = p.id; S.editPosName = p.name; renderSetup(); const i = document.querySelector(`[data-fkey="pos-edit-${CSS.escape(p.id)}"]`); if (i) i.focus(); } }),
+        delBtn('ลบ', () => {
+          if (S.employees.some((e) => e.desk === p.id)) {
+            toast(`ลบ ${p.name} ไม่ได้ เพราะมี ${count} คนอยู่ในตำแหน่งนี้ ให้เปลี่ยนตำแหน่งของคนเหล่านั้นก่อน`);
+            renderSetup();
+            return;
+          }
+          save(() => ref.delete(), `ลบ ${p.name} แล้ว`);
+        })));
+  }
+
+  function renderSetup() {
+    $('pos-list').replaceChildren(S.positions.length
+      ? el('ul', { class: 'rows' }, ...S.positions.map(positionRow))
+      : emptyNote(S.ready ? 'ยังไม่มีตำแหน่ง เพิ่มได้จากฟอร์มด้านบน' : 'ตำแหน่งจะแสดงที่นี่ กำลังโหลดข้อมูล'));
+
+    $('type-list').replaceChildren(S.leaveTypes.length
+      ? el('ul', { class: 'rows' }, ...S.leaveTypes.map((t) => el('li', null,
+        el('span', { class: 'main' }, t.name, t.requiresReason ? el('span', { class: 'sub', text: 'ต้องระบุเหตุผลตอนเพิ่มโควตา' }) : null),
+        el('span', { class: 'actions' }, delBtn('ลบ', () => {
+          if (S.leaves.some((l) => l.typeId === t.id) || S.quotaEntries.some((q) => q.typeId === t.id)) {
+            toast(`ลบ ${t.name} ไม่ได้ เพราะมีรายการที่ใช้ประเภทนี้อยู่`);
+            render();
+            return;
+          }
+          const ref = S.db.collection('leaveTypes').doc(t.id);
+          save(() => ref.delete(), `ลบ ${t.name} แล้ว`);
+        })))))
+      : emptyNote('ยังไม่มีประเภทการลา'));
+
+    const hols = Object.entries(S.holidays).sort(([a], [b]) => a.localeCompare(b));
+    const today = todayISO();
+    const coming = hols.filter(([d]) => d >= today), gone = hols.filter(([d]) => d < today);
+    const row = ([d, name]) => el('li', null,
+      el('span', { class: 'main' }, name, el('span', { class: 'sub', text: `วัน${DAYS[dow(d)]}ที่ ${fmtDate(d)}` })),
+      el('span', { class: 'actions' }, delBtn('ลบ', () => {
+        const ref = S.db.collection('holidays').doc(d);
+        save(() => ref.delete(), `ลบ ${name} แล้ว`);
+      })));
+    const kids = [];
+    kids.push(coming.length ? el('ul', { class: 'rows' }, ...coming.map(row)) : emptyNote('ยังไม่มีวันนักขัตฤกษ์ที่จะถึง เพิ่มได้จากฟอร์มด้านบน'));
+    if (gone.length) kids.push(el('details', null, el('summary', { text: `ผ่านไปแล้ว ${gone.length} วัน` }), el('ul', { class: 'rows', style: 'margin-top:8px' }, ...gone.map(row))));
+    $('hol-list').replaceChildren(el('div', { class: 'section' }, ...kids));
+  }
+
+  /* ---------- Live previews (the warning appears before the button is pressed) ---------- */
+  const leaveValues = () => ({ emp: $('leave-emp').value, type: $('leave-type').value, start: $('leave-start').value, end: $('leave-end').value, note: $('leave-note').value.trim() });
+
+  function previewLeave() {
+    const v = leaveValues(), box = $('leave-preview');
+    const touched = v.start || v.end;
+    const r = checkLeave(v);
+    const kids = [];
+    if (touched && r.dates.length) kids.push(el('p', { text: `นับเป็นวันลา ${r.dates.length} วัน: ${fmtDates(r.dates)}` }));
+    if (touched && r.skipped.length) kids.push(el('p', { text: `ไม่นับ: ${r.skipped.map((s) => `${fmtDate(s.date)} (${s.why})`).join(', ')}` }));
+    if (r.after !== null && r.after >= 0) kids.push(el('p', { text: `${typeName(v.type)} เหลือ ${r.left} วัน หลังบันทึกเหลือ ${r.after} วัน` }));
+    for (const o of r.overlaps) kids.push(el('p', { class: 'warn', text: `ลาตรงกับ ${empName(o.id)} ${o.dates.length} วัน (${fmtDates(o.dates)})` }));
+    if (touched) for (const e of r.errors) {
+      if (e.startsWith('เลือก')) continue;
+      const p = el('p', { class: 'bad', text: e });
+      if (r.noWorkdays) p.append(' ถ้าจะหยุด ให้ ', el('button', { type: 'button', class: 'linklike', text: 'บันทึกแลกเวร', onclick: () => openView('swap') }));
+      kids.push(p);
+    }
+    box.replaceChildren(...kids);
+    $('leave-submit').disabled = r.errors.length > 0;
+  }
+
+  const quotaValues = () => ({
+    emp: S.personId, type: $('quota-type').value, dir: $('quota-sub').checked ? -1 : 1,
+    days: Number($('quota-days').value), reason: $('quota-reason').value.trim(),
+  });
+  function previewQuota() {
+    const v = quotaValues(), t = S.leaveTypes.find((x) => x.id === v.type);
+    const need = t && t.requiresReason;
+    $('quota-reason-label').textContent = need ? reasonLabel(t) : 'เหตุผล (ไม่บังคับ)';
+    const kids = [];
+    if (v.emp && v.type && Number.isInteger(v.days) && v.days > 0) {
+      const left = remaining(v.emp, v.type), after = left + v.dir * v.days;
+      if (after >= 0) kids.push(el('p', { text: `${typeName(v.type)} เหลือ ${left} วัน หลังบันทึกเหลือ ${after} วัน` }));
+    }
+    $('quota-preview').replaceChildren(...kids);
+  }
+
+  const swapValues = () => ({ date: $('swap-date').value, emp: $('swap-emp').value, rep: $('swap-rep').value, note: $('swap-note').value.trim() });
+  function previewSwap() {
+    const v = swapValues(), kids = [];
+    if (isDate(v.date)) {
+      if (S.holidays[v.date]) kids.push(el('p', { text: `${fmtDate(v.date)} ตรงกับ${S.holidays[v.date]}` }));
+      else if (isWeekend(v.date)) kids.push(el('p', { text: `${fmtDate(v.date)} ตรงกับวัน${DAYS[dow(v.date)]}` }));
+      else kids.push(el('p', { class: 'warn', text: `${fmtDate(v.date)} เป็นวันทำงานปกติ ถ้าใช้วันลา ให้บันทึกในหน้าวันลาหยุดแทน` }));
+    }
+    $('swap-preview').replaceChildren(...kids);
+  }
+
+  function showErrors(boxId, errors) {
+    $(boxId).replaceChildren(...errors.map((e) => el('p', { class: 'bad', text: e })));
+  }
+
+  /* ---------- Forms ---------- */
+  $('leave-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const v = leaveValues(), r = checkLeave(v);
+    if (r.errors.length) { previewLeave(); return; }
+    const ref = S.db.collection('leaves').doc();
+    const body = { employeeId: v.emp, typeId: v.type, startDate: v.start, endDate: r.end, dates: r.dates, note: v.note, createdAt: new Date().toISOString() };
+    const clash = r.overlaps.map((o) => `${empName(o.id)} ${o.dates.length} วัน`).join(', ');
+    const msg = `บันทึกแล้ว ${typeName(v.type)} ของ ${empName(v.emp)} เหลือ ${r.after} วัน` + (clash ? ` · ลาตรงกับ ${clash}` : '');
+    if (await save(() => ref.set(body), msg)) {
+      $('leave-start').value = ''; $('leave-end').value = ''; $('leave-note').value = '';
+      render();
+    }
+  });
+  $('leave-start').addEventListener('change', () => {
+    const s = $('leave-start').value, e = $('leave-end');
+    e.min = s;
+    if (s && (!e.value || e.value < s)) e.value = s;
+  });
+  for (const id of ['leave-emp', 'leave-type', 'leave-start', 'leave-end']) $(id).addEventListener('change', () => { if (id === 'leave-emp') renderSelects(); previewLeave(); });
+
+  $('quota-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const v = quotaValues(), errors = checkQuota(v);
+    if (errors.length) { showErrors('quota-preview', errors); return; }
+    const ref = S.db.collection('quotaEntries').doc();
+    const body = { employeeId: v.emp, typeId: v.type, delta: v.dir * v.days, reason: v.reason, createdAt: new Date().toISOString() };
+    const ok = await save(() => ref.set(body), `${v.dir > 0 ? 'เพิ่ม' : 'ลด'} ${typeName(v.type)} ${v.days} วัน ให้ ${empName(v.emp)} แล้ว`);
+    if (ok) { $('quota-days').value = ''; $('quota-reason').value = ''; render(); }
+  });
+  for (const id of ['quota-type', 'quota-add', 'quota-sub', 'quota-days']) $(id).addEventListener('input', previewQuota);
+  $('person-back').addEventListener('click', closePerson);
+
+  $('swap-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const v = swapValues(), errors = checkSwap(v);
+    if (errors.length) { showErrors('swap-preview', errors); return; }
+    const ref = S.db.collection('swaps').doc();
+    const body = { date: v.date, employeeId: v.emp, replacementId: v.rep, note: v.note, createdAt: new Date().toISOString() };
+    if (await save(() => ref.set(body), `บันทึกแล้ว ${empName(v.emp)} หยุด ${empName(v.rep)} มาแทน ไม่หักโควตา`)) {
+      $('swap-date').value = ''; $('swap-note').value = ''; render();
+    }
+  });
+  $('swap-date').addEventListener('change', previewSwap);
+
+  $('emp-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const name = $('emp-name').value.trim();
+    if (!name) { toast('ใส่ชื่อพนักงาน'); return; }
+    if (S.employees.some((e) => e.name === name)) { toast(`มีชื่อ ${name} อยู่แล้ว`); return; }
+    const ref = S.db.collection('employees').doc();
+    const desk = $('emp-desk').value;
+    const order = S.employees.reduce((m, e) => Math.max(m, e.order || 0), S.employees.length) + 1;
+    if (await save(() => ref.set({ name, desk, order, dutyDays: [], active: true, createdAt: new Date().toISOString() }), `เพิ่ม ${name} แล้ว`)) { $('emp-name').value = ''; $('emp-name').focus(); }
+  });
+  $('pos-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const name = $('pos-name').value.trim();
+    if (!name) { toast('ใส่ชื่อตำแหน่ง'); return; }
+    if (S.positions.some((p) => p.name === name)) { toast(`มีตำแหน่ง ${name} อยู่แล้ว`); return; }
+    const order = S.positions.reduce((m, p) => Math.max(m, p.order || 0), 0) + 1;
+    const ref = S.db.collection('positions').doc();
+    if (await save(() => ref.set({ name, order }), `เพิ่มตำแหน่ง ${name} แล้ว`)) { $('pos-name').value = ''; }
+  });
+  $('friday-form').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const date = $('friday-date').value, emp = $('friday-emp').value, note = $('friday-note').value.trim();
+    if (!isDate(date) || !emp) { toast('เลือกวันที่และคนอยู่เวร'); return; }
+    if (fridayRows().some((f) => f.date === date)) { toast(`${fmtDate(date)} มีเวรอยู่แล้ว เปลี่ยนคนได้ที่รายการด้านล่าง`); return; }
+    queued(() => writeFriday([...fridayRows(), { date, employeeId: emp, note }], `เพิ่มเวร ${fmtDate(date)} แล้ว`));
+    $('friday-date').value = ''; $('friday-note').value = '';
+  });
+  $('cal-prev').addEventListener('click', () => shiftMonth(-1));
+  $('cal-next').addEventListener('click', () => shiftMonth(1));
+  $('cal-now').addEventListener('click', () => { S.calMonth = todayISO().slice(0, 7); renderCalendar(); });
+  $('type-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const name = $('type-name').value.trim();
+    if (!name) { toast('ใส่ชื่อประเภทการลา'); return; }
+    if (S.leaveTypes.some((t) => t.name === name)) { toast(`มีประเภท ${name} อยู่แล้ว`); return; }
+    const order = S.leaveTypes.reduce((m, t) => Math.max(m, t.order || 0), 0) + 1;
+    const ref = S.db.collection('leaveTypes').doc();
+    if (await save(() => ref.set({ name, requiresReason: $('type-reason').checked, order }), `เพิ่ม ${name} แล้ว`)) { $('type-name').value = ''; $('type-reason').checked = false; }
+  });
+  $('hol-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const date = $('hol-date').value, name = $('hol-name').value.trim();
+    if (!isDate(date) || !name) { toast('ใส่วันที่และชื่อวันหยุด'); return; }
+    if (S.holidays[date]) { toast(`${fmtDate(date)} มี ${S.holidays[date]} อยู่แล้ว`); return; }
+    const hit = S.leaves.filter((l) => l.dates.includes(date));
+    const ref = S.db.collection('holidays').doc(date);
+    const msg = hit.length
+      ? `เพิ่มแล้ว แต่มีการลาวันนี้อยู่ ${hit.length} รายการที่ยังหักโควตาอยู่ ถ้าต้องการคืนวันลา ให้ลบแล้วลงใหม่`
+      : `เพิ่ม ${name} แล้ว`;
+    if (await save(() => ref.set({ name }), msg)) { $('hol-date').value = ''; $('hol-name').value = ''; }
+  });
+  $('leave-filter').addEventListener('change', renderLeaveList);
+
+  /* ---------- Views ---------- */
+  const VIEWS = ['overview', 'leave', 'swap', 'holiday', 'setup'];
+  const viewName = () => (VIEWS.includes(S.view) ? S.view : 'overview');
+  function route() {
+    const name = viewName();
+    const person = !!S.personId;
+    for (const v of VIEWS) $('view-' + v).hidden = person || v !== name;
+    $('view-person').hidden = !person;
+    document.querySelectorAll('.tabs a').forEach((a) => {
+      if (a.dataset.tab === name) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+  }
+  function openView(name) { S.view = name; S.personId = null; S.renaming = false; route(); window.scrollTo(0, 0); }
+  /* Tabs switch here instead of changing the address. */
+  document.querySelectorAll('.tabs a').forEach((a) => a.addEventListener('click', (ev) => { ev.preventDefault(); openView(a.dataset.tab); }));
+
+  /* ---------- Save the current page as an image ----------
+     Drawn on a canvas from the data, not copied from the screen, so the picture has no buttons or dropdowns and always uses light colours. */
+  const PAPER = { bg: '#ffffff', ink: '#14211b', muted: '#566a5f', line: '#d3ddd5', sunken: '#eef2ed', board: '#0f3a2c', boardInk: '#eef6f1', boardMuted: '#a9c6b7', accent: '#0b6b46', warn: '#8f4f00', warnBg: '#fcefd8', bad: '#ab2219', weekend: '#f1f6f2' };
+  const BODY_FONT = '"IBM Plex Sans Thai", "Leelawadee UI", Tahoma, sans-serif';
+  const HEAD_FONT = '"Chakra Petch", "IBM Plex Sans Thai", "Leelawadee UI", Tahoma, sans-serif';
+  const SHEET_W = 1200, SHEET_PAD = 40, SHEET_SCALE = 2;
+  const canvasFont = (size, weight, head) => `${weight || 400} ${size}px ${head ? HEAD_FONT : BODY_FONT}`;
+  const lineHeight = (size) => Math.round(size * 1.55);
+
+  const wordSegmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('th', { granularity: 'word' }) : null;
+  const clusterSegmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter('th', { granularity: 'grapheme' }) : null;
+  const words = (t) => (wordSegmenter ? [...wordSegmenter.segment(t)].map((s) => s.segment) : t.split(/(\s+)/));
+  const clusters = (t) => (clusterSegmenter ? [...clusterSegmenter.segment(t)].map((s) => s.segment) : Array.from(t));
+
+  /* Thai has no spaces between words, so lines break on the word boundaries the browser finds. */
+  function wrapLines(ctx, text, maxW) {
+    const lines = [];
+    let line = '';
+    for (const word of words(String(text))) {
+      if (ctx.measureText(line + word).width <= maxW) { line += word; continue; }
+      if (line.trim()) lines.push(line.trim());
+      line = word.trimStart();
+      while (ctx.measureText(line).width > maxW) {
+        let part = '';
+        const parts = clusters(line);
+        for (const c of parts) { if (ctx.measureText(part + c).width > maxW && part) break; part += c; }
+        lines.push(part);
+        line = line.slice(part.length);
+        if (!line) break;
+      }
+    }
+    if (line.trim()) lines.push(line.trim());
+    return lines.length ? lines : [''];
+  }
+
+  /* The same code measures (draw = false) and paints (draw = true), so the canvas height is always exact. */
+  function paintSheet(ctx, sheet, draw) {
+    const inner = SHEET_W - SHEET_PAD * 2;
+    const fill = (x, y, w, h, color) => { if (draw) { ctx.fillStyle = color; ctx.fillRect(x, y, w, h); } };
+    const rule = (x, y, w, h) => { if (draw) { ctx.strokeStyle = PAPER.line; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w, h); } };
+    const write = (text, x, y, opts) => {
+      if (!draw) return;
+      ctx.font = canvasFont(opts.size, opts.weight, opts.head);
+      ctx.fillStyle = opts.color || PAPER.ink;
+      ctx.textAlign = opts.align || 'left';
+      ctx.fillText(text, x, y + opts.size * 1.15);
+    };
+    const paragraph = (text, x, y, w, opts) => {
+      ctx.font = canvasFont(opts.size, opts.weight, opts.head);
+      const lines = wrapLines(ctx, text, w);
+      lines.forEach((l, i) => write(l, opts.align === 'center' ? x + w / 2 : x, y + i * lineHeight(opts.size), opts));
+      return lines.length * lineHeight(opts.size);
+    };
+
+    ctx.font = canvasFont(38, 700, true);
+    const titleLines = wrapLines(ctx, sheet.title, inner);
+    const bandH = 34 + titleLines.length * lineHeight(38) + lineHeight(20) + 26;
+    fill(0, 0, SHEET_W, bandH, PAPER.board);
+    titleLines.forEach((l, i) => write(l, SHEET_PAD, 30 + i * lineHeight(38), { size: 38, weight: 700, head: true, color: PAPER.boardInk }));
+    write(sheet.subtitle, SHEET_PAD, 30 + titleLines.length * lineHeight(38) + 4, { size: 20, color: PAPER.boardMuted });
+    let y = bandH + 30;
+
+    for (const block of sheet.blocks) {
+      if (block.heading) {
+        y += paragraph(block.heading, SHEET_PAD, y, inner, { size: 25, weight: 600, head: true }) + 8;
+      } else if (block.notes) {
+        for (const note of block.notes) {
+          if (block.tone === 'warn') {
+            ctx.font = canvasFont(19);
+            const h = wrapLines(ctx, note, inner - 32).length * lineHeight(19) + 20;
+            fill(SHEET_PAD, y, inner, h, PAPER.warnBg);
+            paragraph(note, SHEET_PAD + 16, y + 10, inner - 32, { size: 19, color: PAPER.warn });
+            y += h + 8;
+          } else {
+            y += paragraph(note, SHEET_PAD, y, inner, { size: 18, color: PAPER.muted }) + 4;
+          }
+        }
+        y += 12;
+      } else if (block.table) {
+        const { cols, rows } = block.table;
+        const widths = cols.map((c) => c.w * inner);
+        const cellLines = (row) => row.map((cell, i) => {
+          const c = typeof cell === 'object' ? cell : { text: cell };
+          ctx.font = canvasFont(19, c.weight);
+          return { ...c, lines: wrapLines(ctx, c.text, widths[i] - 28) };
+        });
+        const headH = lineHeight(17) + 18;
+        fill(SHEET_PAD, y, inner, headH, PAPER.sunken);
+        let x = SHEET_PAD;
+        cols.forEach((c, i) => {
+          write(c.label, c.align === 'center' ? x + widths[i] / 2 : x + 14, y + 9, { size: 17, weight: 500, color: PAPER.muted, align: c.align });
+          x += widths[i];
+        });
+        const top = y;
+        y += headH;
+        for (const row of rows) {
+          const cells = cellLines(row);
+          const h = Math.max(...cells.map((c) => c.lines.length)) * lineHeight(19) + 20;
+          x = SHEET_PAD;
+          cells.forEach((c, i) => {
+            c.lines.forEach((l, k) => write(l, cols[i].align === 'center' ? x + widths[i] / 2 : x + 14, y + 10 + k * lineHeight(19),
+              { size: 19, weight: c.weight, color: c.color, align: cols[i].align }));
+            x += widths[i];
+          });
+          y += h;
+          if (draw) { ctx.fillStyle = PAPER.line; ctx.fillRect(SHEET_PAD, y, inner, 1); }
+        }
+        if (!rows.length) { write('ไม่มีข้อมูล', SHEET_PAD + 14, y + 10, { size: 19, color: PAPER.muted }); y += lineHeight(19) + 20; }
+        rule(SHEET_PAD, top, inner, y - top);
+        y += 26;
+      } else if (block.calendar) {
+        const cellW = inner / 7, headH = lineHeight(18) + 12;
+        fill(SHEET_PAD, y, inner, headH, PAPER.sunken);
+        DAYS_SHORT.forEach((d, i) => write(d, SHEET_PAD + i * cellW + cellW / 2, y + 6, { size: 18, weight: 600, color: PAPER.muted, align: 'center' }));
+        const top = y;
+        y += headH;
+        for (const week of monthWeeks(block.calendar)) {
+          const contents = week.map((date) => {
+            if (!date) return [];
+            const d = calendarDay(date), items = [];
+            if (d.holiday) items.push({ text: d.holiday, size: 15, color: PAPER.warn });
+            if (d.group) items.push({ text: d.group, size: 18, weight: 700, head: true, color: PAPER.accent });
+            d.names.forEach((n) => items.push({ text: n, size: 17 }));
+            if (d.press.length) items.push({ text: 'ปิดหน้า', size: 15, weight: 600, head: true, color: PAPER.muted });
+            d.press.forEach((n) => items.push({ text: n, size: 17 }));
+            if (d.off) items.push({ text: d.off, size: 14, color: PAPER.muted });
+            d.extra.forEach((n) => items.push({ text: n, size: 14, color: PAPER.muted }));
+            return items;
+          });
+          const heightOf = (items) => items.reduce((sum, it) => {
+            ctx.font = canvasFont(it.size, it.weight, it.head);
+            return sum + wrapLines(ctx, it.text, cellW - 18).length * lineHeight(it.size);
+          }, 0);
+          const h = Math.max(96, 36 + Math.max(...contents.map(heightOf)) + 8);
+          week.forEach((date, i) => {
+            const cx = SHEET_PAD + i * cellW;
+            if (!date) fill(cx, y, cellW, h, PAPER.sunken);
+            else {
+              if (calendarDay(date).holiday) fill(cx, y, cellW, h, PAPER.warnBg);
+              else if (isWeekend(date)) fill(cx, y, cellW, h, PAPER.weekend);
+              write(String(toUTC(date).getUTCDate()), cx + 9, y + 6, { size: 21, weight: 700, head: true });
+              let cy = y + 36;
+              for (const it of contents[i]) cy += paragraph(it.text, cx + 9, cy, cellW - 18, it);
+            }
+            rule(cx, y, cellW, h);
+          });
+          y += h;
+        }
+        rule(SHEET_PAD, top, inner, y - top);
+        y += 26;
+      }
+    }
+    return y + 10;
+  }
+
+  const dutyText = (e) => {
+    const days = Array.isArray(e.dutyDays) ? e.dutyDays : [];
+    return DUTY_DAYS.filter(([n]) => days.includes(n)).map(([, , full]) => full).join(', ') || '-';
+  };
+  const balanceRow = (e) => S.leaveTypes.map((t) => {
+    const left = remaining(e.id, t.id);
+    return { text: `${left} / ${quotaTotal(e.id, t.id)}`, weight: left < 0 ? 600 : 400, color: left < 0 ? PAPER.bad : PAPER.ink };
+  });
+  const balanceCols = (first) => {
+    const w = first ? (1 - 0.22) / Math.max(S.leaveTypes.length, 1) : 1 / Math.max(S.leaveTypes.length, 1);
+    return [...(first ? [{ label: first, w: 0.22 }] : []), ...S.leaveTypes.map((t) => ({ label: t.name, w, align: 'center' }))];
+  };
+  const leaveTable = (list, withName) => ({
+    cols: withName
+      ? [{ label: 'ใคร', w: 0.17 }, { label: 'สิทธิ์', w: 0.17 }, { label: 'วันที่', w: 0.36 }, { label: 'กี่วัน', w: 0.08, align: 'center' }, { label: 'หมายเหตุ', w: 0.22 }]
+      : [{ label: 'สิทธิ์', w: 0.22 }, { label: 'วันที่', w: 0.4 }, { label: 'กี่วัน', w: 0.1, align: 'center' }, { label: 'หมายเหตุ', w: 0.28 }],
+    rows: list.map((l) => [...(withName ? [empName(l.employeeId)] : []), typeName(l.typeId), fmtDates(l.dates), String(l.dates.length), l.note || '-']),
+  });
+
+  /* What each page's picture contains. */
+  function buildSheet() {
+    const subtitle = `แผนกกีฬา · ข้อมูล ณ ${fmtDate(todayISO())}`;
+    const yearStart = todayISO().slice(0, 4) + '-01-01';
+    const leavesOf = (keep) => S.leaves.filter(keep).sort((a, b) => a.startDate.localeCompare(b.startDate));
+    if (S.personId) {
+      const e = S.employees.find((x) => x.id === S.personId);
+      return {
+        title: e.name, filename: `ข้อมูล ${e.name}`, subtitle,
+        blocks: [
+          { notes: [`ตำแหน่ง: ${positionName(e.desk) || 'ยังไม่ระบุ'}`, `เวรปิดหน้า: ${dutyText(e)}`] },
+          { heading: 'วันลาคงเหลือ (เหลือ / ทั้งหมด)' },
+          { table: { cols: balanceCols(), rows: [balanceRow(e)] } },
+          { heading: 'ประวัติโควตา' },
+          { table: {
+            cols: [{ label: 'ประเภท', w: 0.26 }, { label: 'จำนวน', w: 0.14, align: 'center' }, { label: 'เหตุผล', w: 0.6 }],
+            rows: S.quotaEntries.filter((q) => q.employeeId === e.id).sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
+              .map((q) => [typeName(q.typeId), `${q.delta > 0 ? '+' : ''}${q.delta}`, q.reason || '-']),
+          } },
+          { heading: 'ประวัติการลา' },
+          { table: leaveTable(leavesOf((l) => l.employeeId === e.id), false) },
+        ],
+      };
+    }
+    const view = viewName();
+    if (view === 'leave') {
+      const who = $('leave-filter').value, { now } = overlapSummary(), off = offTodayNames();
+      const blocks = [{ notes: [off.length ? `วันนี้หยุด ${off.join(', ')}` : 'วันนี้ไม่มีคนหยุด'] }];
+      if (now.length) {
+        blocks.push({ heading: 'แจ้งเตือนลาตรงกัน' });
+        blocks.push({ tone: 'warn', notes: now.map((p) => `${empName(p.a)} ลาตรงกับ ${empName(p.b)} ${p.dates.length} วัน (${fmtDates(p.dates)})`) });
+      }
+      const people = activeEmployees().filter((e) => !who || e.id === who);
+      blocks.push({ heading: 'วันลาคงเหลือ (เหลือ / ทั้งหมด)' });
+      blocks.push({ table: { cols: balanceCols('พนักงาน'), rows: people.map((e) => [{ text: e.name, weight: 600 }, ...balanceRow(e)]) } });
+      blocks.push({ heading: 'วันลาหยุดปีนี้' });
+      blocks.push({ table: leaveTable(leavesOf((l) => (!who || l.employeeId === who) && l.dates.some((d) => d >= yearStart)), true) });
+      return { title: who ? `วันลาหยุด ${empName(who)}` : 'วันลาหยุด', filename: who ? `วันลาหยุด ${empName(who)}` : 'วันลาหยุด', subtitle, blocks };
+    }
+    if (view === 'swap') {
+      return {
+        title: 'แลกเวร', filename: 'แลกเวร', subtitle,
+        blocks: [{ table: {
+          cols: [{ label: 'วันที่', w: 0.26 }, { label: 'ใครหยุด', w: 0.2 }, { label: 'ใครมาแทน', w: 0.2 }, { label: 'หมายเหตุ', w: 0.34 }],
+          rows: [...S.swaps].sort((a, b) => a.date.localeCompare(b.date)).map((s) => [`วัน${DAYS[dow(s.date)]}ที่ ${fmtDate(s.date)}`, empName(s.employeeId), empName(s.replacementId), s.note || '-']),
+        } }],
+      };
+    }
+    if (view === 'holiday') {
+      const doc = S.settings.find((x) => x.id === 'holidaySchedule');
+      const notes = doc && Array.isArray(doc.notes) ? doc.notes : [];
+      return {
+        title: `ปฏิทินเวร ${monthLabel(S.calMonth)}`, filename: `ปฏิทินเวร ${monthLabel(S.calMonth)}`, subtitle,
+        blocks: [
+          { calendar: S.calMonth },
+          { heading: 'รายชื่อเวร' },
+          { table: { cols: [{ label: 'เวร', w: 0.2 }, { label: 'รายชื่อ', w: 0.8 }], rows: holidayGroups().map((g) => [{ text: g.name, weight: 600 }, g.members.map(empName).join(', ') || '-']) } },
+          ...(notes.length ? [{ notes }] : []),
+        ],
+      };
+    }
+    if (view === 'setup') {
+      return {
+        title: 'ตั้งค่า', filename: 'ตั้งค่า', subtitle,
+        blocks: [
+          { heading: 'ตำแหน่ง' },
+          { table: { cols: [{ label: 'ตำแหน่ง', w: 0.7 }, { label: 'จำนวนคน', w: 0.3, align: 'center' }], rows: S.positions.map((p) => [p.name, String(S.employees.filter((e) => e.desk === p.id).length)]) } },
+          { heading: 'ประเภทการลา' },
+          { table: { cols: [{ label: 'ประเภท', w: 1 }], rows: S.leaveTypes.map((t) => [t.name]) } },
+          { heading: 'วันนักขัตฤกษ์' },
+          { table: { cols: [{ label: 'วันที่', w: 0.4 }, { label: 'ชื่อวันหยุด', w: 0.6 }],
+            rows: Object.entries(S.holidays).filter(([d]) => d >= yearStart).sort(([a], [b]) => a.localeCompare(b)).map(([d, n]) => [`วัน${DAYS[dow(d)]}ที่ ${fmtDate(d)}`, n]) } },
+        ],
+      };
+    }
+    return {
+      title: 'ภาพรวมพนักงาน', filename: 'ภาพรวมพนักงาน', subtitle,
+      blocks: [{ table: {
+        cols: [{ label: 'ชื่อ', w: 0.34 }, { label: 'ตำแหน่ง', w: 0.26 }, { label: 'เวรปิดหน้า', w: 0.4 }],
+        rows: activeEmployees().map((e) => [{ text: e.name, weight: 600 }, positionName(e.desk) || 'ยังไม่ระบุ', dutyText(e)]),
+      } }],
+    };
+  }
+
+  async function renderSheet(sheet) {
+    /* Canvas text only uses a web font that is already loaded. */
+    if (document.fonts && document.fonts.load) {
+      const wanted = ['400 20px "IBM Plex Sans Thai"', '500 20px "IBM Plex Sans Thai"', '600 20px "IBM Plex Sans Thai"', '600 20px "Chakra Petch"', '700 20px "Chakra Petch"'];
+      await Promise.race([
+        Promise.all(wanted.map((f) => document.fonts.load(f, 'กขค 123').catch(() => null))),
+        new Promise((r) => setTimeout(r, 3000)),
+      ]);
+    }
+    const measure = document.createElement('canvas').getContext('2d');
+    const height = paintSheet(measure, sheet, false);
+    const canvas = document.createElement('canvas');
+    canvas.width = SHEET_W * SHEET_SCALE;
+    canvas.height = Math.ceil(height) * SHEET_SCALE;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(SHEET_SCALE, SHEET_SCALE);
+    ctx.fillStyle = PAPER.bg;
+    ctx.fillRect(0, 0, SHEET_W, height);
+    paintSheet(ctx, sheet, true);
+    return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('no image'))), 'image/png'));
+  }
+
+  let imageData = '', imageName = '';
+  $('save-image').addEventListener('click', async () => {
+    if (!S.ready) { toast('กำลังโหลดข้อมูลล่าสุด รอสักครู่แล้วลองอีกครั้ง'); return; }
+    const button = $('save-image'), label = button.textContent;
+    button.disabled = true; button.textContent = 'กำลังสร้างรูป';
+    try {
+      const sheet = buildSheet();
+      const blob = await renderSheet(sheet);
+      imageData = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      imageName = `${sheet.filename}.png`;
+      $('image-preview').src = imageData;
+      $('image-preview').alt = sheet.title;
+      $('image-title').textContent = sheet.title;
+      $('image-dialog').showModal();
+    } catch (e) {
+      toast('สร้างรูปไม่สำเร็จ ลองอีกครั้ง');
+    } finally {
+      button.disabled = false; button.textContent = label;
+    }
+  });
+  $('image-save').addEventListener('click', () => {
+    /* The browser gives no answer on whether the file landed, so the hint under the title stays visible. */
+    const link = el('a', { href: imageData, download: imageName });
+    document.body.append(link);
+    link.click();
+    link.remove();
+  });
+  $('image-close').addEventListener('click', () => $('image-dialog').close());
+
+  /* ---------- Talking to the Google Sheet ---------- */
+  const POLL_MS = 15000, RETRY_MS = 30000;
+  /* The Google Sheet's address. Sent without cookies, so whichever Google accounts a browser is signed in to cannot get in the way. */
+  const API_URL = 'https://script.google.com/macros/s/AKfycbyZXVXgRjUIs8s5JUexk08grgSAr-rK5OQ8M5Sg4qY-4PpQpIkUoAJxV9nIKb_gGaOq/exec';
+  async function callServer(name, ...args) {
+    try {
+      const response = name === 'apiGetAll'
+        ? await fetch(`${API_URL}?api=all&v=${encodeURIComponent(args[0] || '')}`, { credentials: 'omit', cache: 'no-store' })
+        /* Plain text keeps this a simple request; the passcode stays in the body and out of the address. */
+        : await fetch(API_URL, { method: 'POST', credentials: 'omit', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: name, args }) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (e) {
+      throw { code: 'unavailable', message: String((e && e.message) || e) };
+    }
+  }
+
+  /* Keeps a local copy of the Sheet. Changes show at once and go to the Sheet in the background;
+     other people's changes arrive by asking every few seconds whether anything is new. */
+  function createSheetDb() {
+    const data = {}, listeners = {};
+    COLLECTIONS.forEach((c) => { data[c] = new Map(); listeners[c] = []; });
+    let version = '', loaded = false, pending = [], sending = false, localChanges = 0, pollTimer;
+
+    const snapshot = (c) => ({
+      docs: [...data[c]].map(([id, body]) => ({ id, exists: true, data: () => JSON.parse(JSON.stringify(body)) })),
+      metadata: { fromCache: false, hasPendingWrites: false },
+    });
+    const emit = (c) => listeners[c].forEach((fn) => fn(snapshot(c)));
+    const schedulePoll = (ms) => { clearTimeout(pollTimer); pollTimer = setTimeout(poll, ms); };
+
+    async function poll() {
+      if (sending || pending.length) { schedulePoll(POLL_MS); return; }
+      if (document.visibilityState === 'hidden' && loaded) { schedulePoll(POLL_MS); return; }
+      const before = localChanges;
+      try {
+        const reply = await callServer('apiGetAll', version);
+        /* Something was typed while this was on its way, so this answer is already out of date. */
+        if (before === localChanges && !sending && !pending.length && !reply.same) {
+          COLLECTIONS.forEach((c) => {
+            data[c] = new Map(Object.entries(reply.data[c] || {}));
+            emit(c);
+          });
+          loaded = true;
+          version = reply.version;
+        } else if (reply.same) {
+          loaded = true;
+        }
+        if ($('status').textContent.startsWith('เชื่อมต่อ')) setStatus('');
+        schedulePoll(POLL_MS);
+      } catch (e) {
+        setStatus('เชื่อมต่อ Google Sheet ไม่ได้ ตัวเลขที่เห็นอาจไม่ล่าสุด ระบบจะลองใหม่ให้เอง', true);
+        schedulePoll(RETRY_MS);
+      }
+    }
+
+    function send() {
+      if (sending || !pending.length) return;
+      const batch = pending;
+      pending = [];
+      sending = true;
+      callServer('apiWrite', S.editCode, JSON.stringify(batch.map((b) => b.write)))
+        .then((reply) => {
+          if (!reply.ok) throw { code: reply.code, message: reply.message };
+          batch.forEach((b) => b.resolve());
+        })
+        .catch((e) => batch.forEach((b) => b.reject(e)))
+        .finally(() => {
+          sending = false;
+          /* Fetch again either way: it picks up other people's changes and undoes a write that failed. */
+          version = '';
+          if (pending.length) send(); else schedulePoll(300);
+        });
+    }
+
+    function enqueue(write) {
+      localChanges++;
+      const map = data[write.c];
+      if (write.op === 'delete') map.delete(write.id);
+      else if (write.op === 'update') map.set(write.id, { ...(map.get(write.id) || {}), ...write.data });
+      else map.set(write.id, write.data);
+      emit(write.c);
+      return new Promise((resolve, reject) => {
+        pending.push({ write, resolve, reject });
+        setTimeout(send, 0);
+      });
+    }
+
+    const newId = () => Array.from({ length: 20 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') schedulePoll(0); });
+    return {
+      start: () => poll(),
+      collection: (c) => ({
+        path: c,
+        doc: (id) => {
+          const docId = id || newId();
+          return {
+            id: docId,
+            set: (body) => enqueue({ op: 'set', c, id: docId, data: JSON.parse(JSON.stringify(body)) }),
+            update: (body) => enqueue({ op: 'update', c, id: docId, data: JSON.parse(JSON.stringify(body)) }),
+            delete: () => enqueue({ op: 'delete', c, id: docId }),
+          };
+        },
+        onSnapshot: (next) => { listeners[c].push(next); return () => {}; },
+      }),
+    };
+  }
+
+  /* ---------- The department passcode ---------- */
+  const CODE_KEY = 'sportsLeaveEditCode';
+  function storedCode() { try { return localStorage.getItem(CODE_KEY) || ''; } catch (e) { return ''; } }
+  function rememberCode(code) {
+    try { if (code) localStorage.setItem(CODE_KEY, code); else localStorage.removeItem(CODE_KEY); } catch (e) { /* re-entered next visit */ }
+  }
+  function closeEditForm() { $('edit-code').value = ''; $('edit-form').hidden = true; showEditState(); }
+  $('edit-open').addEventListener('click', () => { $('edit-form').hidden = false; showEditState(); $('edit-code').focus(); });
+  $('edit-cancel').addEventListener('click', closeEditForm);
+  $('edit-off').addEventListener('click', () => { S.editCode = ''; rememberCode(''); setReadOnly(true); toast('ออกจากโหมดแก้ไขแล้ว'); });
+  $('edit-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const code = $('edit-code').value.trim();
+    if (!code) { toast('ใส่รหัสแก้ไข'); return; }
+    try {
+      const reply = await callServer('apiCheckCode', code);
+      if (reply.ok) {
+        S.editCode = code;
+        rememberCode(code);
+        closeEditForm();
+        setStatus('');
+        setReadOnly(false);
+        toast('แก้ไขข้อมูลได้แล้ว');
+      } else {
+        toast(reply.code === 'locked' ? 'ใส่รหัสผิดหลายครั้ง รอ 5 นาทีแล้วลองใหม่' : 'รหัสไม่ถูกต้อง');
+      }
+    } catch (e) {
+      toast('ตรวจรหัสไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง');
+    }
+  });
+
+  /* ---------- Data ---------- */
+  let renderQueued = false;
+  function queueRender() {
+    if (renderQueued) return;
+    renderQueued = true;
+    setTimeout(() => { renderQueued = false; render(); }, 0);
+  }
+
+  let loadTimer;
+  function subscribe(name) {
+    S.db.collection(name).onSnapshot((snap) => {
+      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (name === 'holidays') {
+        S.holidays = Object.fromEntries(rows.map((r) => [r.id, r.name]));
+      } else if (name === 'employees') {
+        S.employees = rows.sort(byOrder);
+      } else if (name === 'positions') {
+        S.positions = rows.sort((a, b) => (a.order || 0) - (b.order || 0));
+      } else if (name === 'leaveTypes') {
+        S.leaveTypes = rows.sort((a, b) => (a.order || 0) - (b.order || 0));
+      } else if (name === 'leaves') {
+        S.leaves = rows.map((r) => ({ ...r, dates: Array.isArray(r.dates) ? r.dates : [] }));
+      } else {
+        S[name] = rows;
+      }
+      if (!snap.metadata.fromCache) fresh.add(name);
+      if (fresh.size === COLLECTIONS.length && !S.ready) {
+        S.ready = true;
+        clearTimeout(loadTimer);
+        if ($('status').textContent.startsWith('ยังดึงข้อมูล')) setStatus('');
+      }
+      queueRender();
+    }, (err) => {
+      if (err.code === 'unavailable') { setTimeout(() => subscribe(name), 3000); return; }
+      clearTimeout(loadTimer);
+      setStatus('ดึงข้อมูลไม่ได้แล้ว ตัวเลขที่เห็นอาจไม่ล่าสุด เปิดหน้านี้ใหม่อีกครั้ง', true);
+      setReadOnly(true);
+    });
+  }
+
+  async function boot() {
+    route();
+    showEditState();
+    render();
+    S.db = createSheetDb();
+    loadTimer = setTimeout(() => setStatus('ยังดึงข้อมูลล่าสุดไม่ได้ ตัวเลขที่เห็นอาจยังไม่ครบ ระบบจะลองต่อให้เอง'), 10000);
+    COLLECTIONS.forEach(subscribe);
+    S.db.start();
+    /* A device that entered the passcode before can edit straight away, if the passcode has not changed. */
+    const code = storedCode();
+    if (code) {
+      callServer('apiCheckCode', code).then((reply) => {
+        if (reply.ok) { S.editCode = code; setReadOnly(false); } else if (reply.code === 'unauthorized') rememberCode('');
+      }).catch(() => {});
+    }
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
