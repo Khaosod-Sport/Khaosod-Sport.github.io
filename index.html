@@ -118,6 +118,12 @@ input[type="password"] { min-width: 0; border: 1px solid var(--line); border-rad
   .people .c-pos, .people .c-duty { grid-column: 1 / -1; }
   .people .c-move { grid-column: 2; grid-row: 1; }
 }
+.column-duty { table-layout: fixed; min-width: 0; }
+.column-duty th:first-child { width: 24%; }
+.column-duty td, .column-duty th { overflow-wrap: anywhere; white-space: normal; vertical-align: middle; }
+.column-duty tbody th { font-weight: 600; }
+.column-duty input[type="text"] { padding: 5px 8px; background: var(--surface); }
+@media (max-width: 560px) { .column-duty td, .column-duty th { padding-left: 8px; padding-right: 8px; } }
 .cal { table-layout: fixed; min-width: 0; }
 .cal th { padding: 6px 2px; text-align: center; white-space: normal; }
 .cal td { height: 92px; padding: 6px; vertical-align: top; border: 1px solid var(--line); font-size: .86rem; line-height: 1.35; overflow-wrap: anywhere; }
@@ -229,7 +235,7 @@ button { font: inherit; cursor: pointer; }
       <a href="#overview" data-tab="overview">ภาพรวม</a>
       <a href="#leave" data-tab="leave">วันลาหยุด<span class="count" id="tab-alerts" hidden></span></a>
       <a href="#swap" data-tab="swap">แลกเวร</a>
-      <a href="#holiday" data-tab="holiday">เวรวันหยุด</a>
+      <a href="#holiday" data-tab="holiday">เวรทำงาน</a>
       <a href="#setup" data-tab="setup">ตั้งค่า</a>
     </nav>
   </div>
@@ -263,6 +269,10 @@ button { font: inherit; cursor: pointer; }
         <summary id="inactive-title"></summary>
         <ul class="rows" id="inactive-list" style="margin-top:8px"></ul>
       </details>
+    </div>
+    <div class="section">
+      <h2>คอลัมน์ประจำวัน</h2>
+      <div id="column-duty"></div>
     </div>
   </section>
 
@@ -389,7 +399,7 @@ button { font: inherit; cursor: pointer; }
       <div id="friday-list"></div>
     </div>
     <div class="section">
-      <h2>รายชื่อเวรวันหยุด</h2>
+      <h2>รายชื่อเวรทำงาน</h2>
       <p class="hint" data-write>เปลี่ยนชื่อได้เมื่อมีการแลกเวร ถ้าเลือกคนที่อยู่เวรอื่น ทั้งสองคนจะสลับเวรกันให้</p>
       <div id="holiday-groups"></div>
     </div>
@@ -707,14 +717,19 @@ button { font: inherit; cursor: pointer; }
 
   /* ---------- Rendering ---------- */
   function render() {
-    /* Rows are rebuilt from state, so keep keyboard focus on the same control. */
-    const focusKey = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fkey : null;
-    renderToday(); renderOverview(); renderLeaveSummary(); renderSelects();
+    /* Rows are rebuilt from state, so keep keyboard focus, and anything half typed, on the same control. */
+    const active = document.activeElement;
+    const focusKey = active && active.dataset ? active.dataset.fkey : null;
+    const typed = focusKey && active.tagName === 'INPUT' ? active.value : null;
+    renderToday(); renderOverview(); renderColumns(); renderLeaveSummary(); renderSelects();
     renderLeaveList(); renderSwapList(); renderCalendar(); renderFriday(); renderHoliday(); renderSetup(); renderPerson();
     previewLeave(); previewQuota(); previewSwap();
     if (focusKey) {
       const again = document.querySelector(`[data-fkey="${CSS.escape(focusKey)}"]`);
-      if (again && !again.disabled) again.focus();
+      if (again && !again.disabled) {
+        again.focus();
+        if (typed !== null && again.tagName === 'INPUT') again.value = typed;
+      }
     }
   }
 
@@ -767,6 +782,37 @@ button { font: inherit; cursor: pointer; }
       S.readOnly ? null : el('td', { class: 'c-move' }, moveButtons(p, i === 0, i === people.length - 1))));
     box.replaceChildren(el('div', { class: 'table-scroll' },
       el('table', { class: 'people' }, el('thead', null, head), el('tbody', null, ...rows))));
+  }
+
+  /* Weekly column roster, Monday first. Writers are typed by hand because some are not on the staff list. */
+  const COLUMN_DAYS = [1, 2, 3, 4, 5, 6, 0];
+  function columnRows() {
+    const doc = S.settings.find((x) => x.id === 'columnDuty');
+    const rows = doc && Array.isArray(doc.rows) ? doc.rows : [];
+    return COLUMN_DAYS.map((day) => ({ column: '', writer: '', ...rows.find((r) => r.day === day), day }));
+  }
+  function changeColumn(day, patch, msg) {
+    queued(() => {
+      const rows = columnRows().map((r) => (r.day === day ? { ...r, ...patch } : r));
+      const ref = S.db.collection('settings').doc('columnDuty');
+      return save(() => ref.set({ rows }), msg);
+    });
+  }
+  function renderColumns() {
+    const box = $('column-duty');
+    if (!S.ready) { box.replaceChildren(emptyNote('คอลัมน์ประจำวันจะแสดงที่นี่ กำลังโหลดข้อมูล')); return; }
+    const cell = (r, field, label) => {
+      const value = r[field] || '';
+      if (S.readOnly) return el('td', { text: value || '-' });
+      const input = el('input', { type: 'text', value, maxlength: '60', 'aria-label': `${label}วัน${DAYS[r.day]}`, 'data-fkey': `column-${r.day}-${field}` });
+      input.addEventListener('change', () => changeColumn(r.day, { [field]: input.value.trim() }, `บันทึก${label}วัน${DAYS[r.day]}แล้ว`));
+      return el('td', null, input);
+    };
+    const head = el('tr', null, el('th', { scope: 'col', text: 'วัน' }), el('th', { scope: 'col', text: 'คอลัมน์' }), el('th', { scope: 'col', text: 'คนเขียน' }));
+    const rows = columnRows().map((r) => el('tr', null,
+      el('th', { scope: 'row', text: DAYS[r.day] }), cell(r, 'column', 'ชื่อคอลัมน์'), cell(r, 'writer', 'คนเขียน')));
+    box.replaceChildren(el('div', { class: 'table-scroll' },
+      el('table', { class: 'column-duty' }, el('thead', null, head), el('tbody', null, ...rows))));
   }
 
   /* Everything about leave lives together on the leave page. */
@@ -1137,7 +1183,7 @@ button { font: inherit; cursor: pointer; }
   function renderHoliday() {
     const box = $('holiday-groups'), groups = holidayGroups();
     renderSchedule(groups);
-    if (!groups.length) { box.replaceChildren(emptyNote(S.ready ? 'ยังไม่มีข้อมูลเวรวันหยุด' : 'เวรวันหยุดจะแสดงที่นี่ กำลังโหลดข้อมูล')); return; }
+    if (!groups.length) { box.replaceChildren(emptyNote(S.ready ? 'ยังไม่มีข้อมูลเวรทำงาน' : 'เวรทำงานจะแสดงที่นี่ กำลังโหลดข้อมูล')); return; }
     const groupOf = new Map();
     for (const g of groups) for (const id of g.members) groupOf.set(id, g);
     const active = activeEmployees();
@@ -1714,11 +1760,19 @@ button { font: inherit; cursor: pointer; }
       };
     }
     return {
-      title: 'ภาพรวมพนักงาน', filename: 'ภาพรวมพนักงาน', subtitle,
-      blocks: [{ table: {
-        cols: [{ label: 'ชื่อ', w: 0.34 }, { label: 'ตำแหน่ง', w: 0.26 }, { label: 'เวรปิดหน้า', w: 0.4 }],
-        rows: activeEmployees().map((e) => [{ text: e.name, weight: 600 }, positionName(e.desk) || 'ยังไม่ระบุ', dutyText(e)]),
-      } }],
+      title: 'ภาพรวม', filename: 'ภาพรวม', subtitle,
+      blocks: [
+        { heading: 'พนักงาน' },
+        { table: {
+          cols: [{ label: 'ชื่อ', w: 0.34 }, { label: 'ตำแหน่ง', w: 0.26 }, { label: 'เวรปิดหน้า', w: 0.4 }],
+          rows: activeEmployees().map((e) => [{ text: e.name, weight: 600 }, positionName(e.desk) || 'ยังไม่ระบุ', dutyText(e)]),
+        } },
+        { heading: 'คอลัมน์ประจำวัน' },
+        { table: {
+          cols: [{ label: 'วัน', w: 0.26 }, { label: 'คอลัมน์', w: 0.37 }, { label: 'คนเขียน', w: 0.37 }],
+          rows: columnRows().map((r) => [{ text: DAYS[r.day], weight: 600 }, r.column || '-', r.writer || '-']),
+        } },
+      ],
     };
   }
 
