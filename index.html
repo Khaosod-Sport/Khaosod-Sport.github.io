@@ -138,6 +138,13 @@ input[type="password"] { min-width: 0; border: 1px solid var(--line); border-rad
 .cal-name { display: block; }
 .cal-press { display: block; margin-top: 2px; color: var(--muted); font-family: var(--font-display); font-size: .76rem; font-weight: 600; }
 .cal-note { display: block; color: var(--muted); font-size: .76rem; }
+.cal-job { color: var(--accent); }
+.people-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.people-pick label { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font-size: .9rem; cursor: pointer; }
+.people-pick input { margin: 0; }
+.people-pick label:has(input:checked) { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.mode { display: flex; flex-wrap: wrap; gap: 6px; }
+.mode button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
 @media (max-width: 620px) {
   .cal td { height: 76px; padding: 3px; font-size: .72rem; }
   .cal-holiday, .cal-note, .cal-press { font-size: .64rem; }
@@ -183,7 +190,7 @@ form { display: grid; gap: 12px; padding: 16px; background: var(--surface); bord
 .field { display: grid; gap: 4px; min-width: 0; }
 .field > label, .legend { font-size: .88rem; font-weight: 500; }
 .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-input[type="text"], input[type="date"], input[type="number"], select {
+input[type="text"], input[type="date"], input[type="time"], input[type="number"], select {
   width: 100%; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); font: inherit;
 }
 .choice { display: flex; flex-wrap: wrap; gap: 14px; }
@@ -235,6 +242,7 @@ button { font: inherit; cursor: pointer; }
       <a href="#overview" data-tab="overview">ภาพรวม</a>
       <a href="#leave" data-tab="leave">วันลาหยุด<span class="count" id="tab-alerts" hidden></span></a>
       <a href="#swap" data-tab="swap">แลกเวร</a>
+      <a href="#assign" data-tab="assign">ลงหมายงาน</a>
       <a href="#holiday" data-tab="holiday">เวรทำงาน</a>
       <a href="#setup" data-tab="setup">ตั้งค่า</a>
     </nav>
@@ -358,19 +366,58 @@ button { font: inherit; cursor: pointer; }
     <div class="split">
       <div class="section" data-write>
         <h2>บันทึกแลกเวร</h2>
+        <div class="mode" role="group" aria-label="แบบการแลกเวร">
+          <button type="button" class="small" id="mode-cover" aria-pressed="true">มีคนมาแทน</button>
+          <button type="button" class="small" id="mode-trade" aria-pressed="false">สลับเวรกัน</button>
+        </div>
         <form id="swap-form" novalidate>
           <div class="field"><label for="swap-date">วันที่หยุด</label><input type="date" id="swap-date"></div>
           <div class="field"><label for="swap-emp">ใครหยุด</label><select id="swap-emp"></select></div>
           <div class="field"><label for="swap-rep">ใครมาแทน</label><select id="swap-rep"></select></div>
-          <div class="field"><label for="swap-note">หมายเหตุ (ไม่บังคับ)</label><input type="text" id="swap-note" maxlength="200"></div>
+          <div class="field"><label for="swap-note">สาเหตุ (ไม่บังคับ)</label><input type="text" id="swap-note" maxlength="200" placeholder="เช่น ติดธุระ ไปทำข่าวต่างจังหวัด"></div>
           <div class="preview" id="swap-preview" aria-live="polite"></div>
           <button class="primary" id="swap-submit" type="submit">บันทึกแลกเวร</button>
+          <p class="hint" style="margin:0">ใช้กับวันเสาร์-อาทิตย์และวันนักขัตฤกษ์ ไม่หักโควตาวันลา</p>
         </form>
-        <p class="hint">ใช้กับวันเสาร์-อาทิตย์และวันนักขัตฤกษ์ ไม่หักโควตาวันลา</p>
+        <form id="trade-form" novalidate hidden>
+          <p class="hint" style="margin:0">ทั้งสองคนไปอยู่เวรของอีกฝ่าย ปฏิทินจะเปลี่ยนชื่อให้ทั้งสองวัน</p>
+          <div class="two">
+            <div class="field"><label for="trade-a">คนที่ 1</label><select id="trade-a"></select></div>
+            <div class="field"><label for="trade-a-date">เวรวันที่ของคนที่ 1</label><input type="date" id="trade-a-date"></div>
+          </div>
+          <div class="two">
+            <div class="field"><label for="trade-b">คนที่ 2</label><select id="trade-b"></select></div>
+            <div class="field"><label for="trade-b-date">เวรวันที่ของคนที่ 2</label><input type="date" id="trade-b-date"></div>
+          </div>
+          <div class="field"><label for="trade-note">สาเหตุ (ไม่บังคับ)</label><input type="text" id="trade-note" maxlength="200" placeholder="เช่น ติดธุระ ไปทำข่าวต่างจังหวัด"></div>
+          <div class="preview" id="trade-preview" aria-live="polite"></div>
+          <button class="primary" type="submit">บันทึกสลับเวร</button>
+        </form>
       </div>
       <div class="section">
         <h2>ประวัติแลกเวร</h2>
         <div id="swap-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-assign" hidden>
+    <div class="split">
+      <div class="section" data-write>
+        <h2>ลงหมายงาน</h2>
+        <form id="job-form" novalidate>
+          <div class="field"><label for="job-date">วันที่</label><input type="date" id="job-date"></div>
+          <div class="field"><span class="legend" id="job-people-label">ใครออกหมาย</span><div class="people-pick" id="job-people" role="group" aria-labelledby="job-people-label"></div></div>
+          <div class="field"><label for="job-title">ทำข่าวอะไร</label><input type="text" id="job-title" maxlength="120" placeholder="เช่น ไทยลีก บุรีรัมย์ พบ การท่าเรือ"></div>
+          <div class="field"><label for="job-place">สถานที่ (ไม่บังคับ)</label><input type="text" id="job-place" maxlength="120" placeholder="เช่น สนามช้าง อารีน่า"></div>
+          <div class="field"><label for="job-time">เวลา (ไม่บังคับ)</label><input type="time" id="job-time"></div>
+          <div class="preview" id="job-preview" aria-live="polite"></div>
+          <button class="primary" type="submit">บันทึกหมายงาน</button>
+        </form>
+      </div>
+      <div class="section">
+        <h2>หมายงานที่จะถึง</h2>
+        <div id="job-list"></div>
       </div>
     </div>
   </section>
@@ -598,8 +645,31 @@ button { font: inherit; cursor: pointer; }
   }
 
   /* ---------- State and lookups ---------- */
-  const COLLECTIONS = ['employees', 'positions', 'leaveTypes', 'quotaEntries', 'leaves', 'swaps', 'holidays', 'settings'];
-  const S = { db: null, editCode: '', view: 'overview', readOnly: true, ready: false, personId: null, renaming: false, calMonth: todayISO().slice(0, 7), editPos: null, editPosName: '', employees: [], positions: [], leaveTypes: [], quotaEntries: [], leaves: [], swaps: [], holidays: {}, settings: [] };
+  function checkTrade(v) {
+    const errors = [];
+    if (!S.ready) errors.push('กำลังโหลดข้อมูลล่าสุด รอสักครู่แล้วลองอีกครั้ง');
+    if (!v.a || !v.b) errors.push('เลือกพนักงานทั้งสองคน');
+    if (v.a && v.b && v.a === v.b) errors.push('ต้องเป็นคนละคนกัน');
+    if (!isDate(v.aDate) || !isDate(v.bDate)) errors.push('เลือกวันที่เวรของทั้งสองคน');
+    else if (v.aDate === v.bDate) errors.push('วันที่ของทั้งสองคนต้องเป็นคนละวัน ถ้าวันเดียวกันให้ใช้แบบมีคนมาแทน');
+    for (const [id, date] of [[v.a, v.aDate], [v.b, v.bDate]]) {
+      if (id && isDate(date) && S.swaps.some((s) => s.date === date && s.employeeId === id)) errors.push(`${empName(id)} มีรายการแลกเวรวันที่ ${fmtDate(date)} อยู่แล้ว`);
+    }
+    return errors;
+  }
+
+  function checkJob(v) {
+    const errors = [];
+    if (!S.ready) errors.push('กำลังโหลดข้อมูลล่าสุด รอสักครู่แล้วลองอีกครั้ง');
+    if (!isDate(v.date)) errors.push('เลือกวันที่');
+    if (!v.people.length) errors.push('เลือกคนออกหมายอย่างน้อย 1 คน');
+    if (!v.title) errors.push('ใส่ว่าไปทำข่าวอะไร');
+    return errors;
+  }
+
+  /* ---------- State and lookups ---------- */
+  const COLLECTIONS = ['employees', 'positions', 'leaveTypes', 'quotaEntries', 'leaves', 'swaps', 'holidays', 'settings', 'assignments'];
+  const S = { db: null, editCode: '', view: 'overview', readOnly: true, ready: false, personId: null, renaming: false, calMonth: todayISO().slice(0, 7), editPos: null, editPosName: '', swapMode: 'cover', employees: [], positions: [], leaveTypes: [], quotaEntries: [], leaves: [], swaps: [], holidays: {}, settings: [], assignments: [] };
   const fresh = new Set();
   /* The position an employee holds is stored by id in `desk`, so renaming a position updates everyone at once. */
   const positionName = (id) => { const p = S.positions.find((x) => x.id === id); return p ? p.name : ''; };
@@ -628,7 +698,7 @@ button { font: inherit; cursor: pointer; }
       if (dates.length) items.push({ first: dates[0], last: dates[dates.length - 1], text: `${fmtDates(dates, true)} (${typeShort(l.typeId)})` });
     }
     for (const s of S.swaps) {
-      if (s.employeeId === id && s.date >= yearStart) items.push({ first: s.date, last: s.date, text: `${fmtDates([s.date], true)} (แลกเวร)` });
+      if (s.employeeId === id && s.date >= yearStart) items.push({ first: s.date, last: s.date, text: `${fmtDates([s.date], true)} (${s.pairId ? 'สลับเวร' : 'แลกเวร'})` });
     }
     return items.sort((a, b) => a.first.localeCompare(b.first)).map((x) => ({ text: x.text, past: x.last < today }));
   }
@@ -722,8 +792,8 @@ button { font: inherit; cursor: pointer; }
     const focusKey = active && active.dataset ? active.dataset.fkey : null;
     const typed = focusKey && active.tagName === 'INPUT' ? active.value : null;
     renderToday(); renderOverview(); renderColumns(); renderLeaveSummary(); renderSelects();
-    renderLeaveList(); renderSwapList(); renderCalendar(); renderFriday(); renderHoliday(); renderSetup(); renderPerson();
-    previewLeave(); previewQuota(); previewSwap();
+    renderLeaveList(); renderSwapList(); renderJobs(); renderCalendar(); renderFriday(); renderHoliday(); renderSetup(); renderPerson();
+    previewLeave(); previewQuota(); previewSwap(); previewTrade();
     if (focusKey) {
       const again = document.querySelector(`[data-fkey="${CSS.escape(focusKey)}"]`);
       if (again && !again.disabled) {
@@ -927,6 +997,8 @@ button { font: inherit; cursor: pointer; }
     fillSelect($('leave-emp'), people, 'เลือกพนักงาน');
     fillSelect($('swap-emp'), people, 'เลือกพนักงาน');
     fillSelect($('swap-rep'), people, 'เลือกพนักงาน');
+    fillSelect($('trade-a'), people, 'เลือกพนักงาน');
+    fillSelect($('trade-b'), people, 'เลือกพนักงาน');
     fillSelect($('leave-filter'), everyone, 'ทุกคน');
     fillSelect($('friday-emp'), people, 'เลือกคนอยู่เวร');
     const emp = $('leave-emp').value;
@@ -974,23 +1046,99 @@ button { font: inherit; cursor: pointer; }
       }))))));
   }
 
+  /* A trade is two swap records sharing a pairId: each person covers the other's date. */
+  const swapText = (s) => (s.pairId ? `สลับเวร: ${empName(s.replacementId)} มาแทน ${empName(s.employeeId)}` : `แลกเวร ${empName(s.employeeId)} หยุด ${empName(s.replacementId)} มาแทน`);
+  const dayLabel = (date) => `วัน${DAYS[dow(date)]}ที่ ${fmtDate(date)}` + (S.holidays[date] ? ` (${S.holidays[date]})` : '');
+
+  /* Which duty someone holds on a date before any swap, for the trade preview. */
+  function dutyOf(id, date) {
+    const row = scheduleRows().find((r) => r.date === date);
+    if (row) {
+      const g = holidayGroups().find((x) => x.id === row.work);
+      return g && g.members.includes(id) ? `อยู่${g.name}` : '';
+    }
+    const friday = fridayRows().find((f) => f.date === date);
+    if (friday && friday.employeeId === id) return 'อยู่เวรปิดหน้า';
+    const e = S.employees.find((x) => x.id === id);
+    if (e && !isWeekend(date) && !S.holidays[date] && Array.isArray(e.dutyDays) && e.dutyDays.includes(dow(date))) return 'อยู่เวรปิดหน้า';
+    return '';
+  }
+
   function renderSwapList() {
     const box = $('swap-list');
-    const list = [...S.swaps].sort((a, b) => b.date.localeCompare(a.date));
-    if (!list.length) { box.replaceChildren(emptyNote('ยังไม่มีรายการแลกเวร ใครหยุดและใครมาแทนจะแสดงที่นี่')); return; }
-    box.replaceChildren(el('ul', { class: 'rows' }, ...list.map((s) => el('li', null,
+    const groups = new Map();
+    for (const s of S.swaps) {
+      const key = s.pairId || s.id;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(s);
+    }
+    const items = [...groups.values()].map((list) => list.sort((a, b) => a.date.localeCompare(b.date)))
+      .sort((a, b) => b[0].date.localeCompare(a[0].date));
+    if (!items.length) { box.replaceChildren(emptyNote('ยังไม่มีรายการแลกเวร ใครหยุด ใครมาแทน หรือใครสลับเวรกันจะแสดงที่นี่')); return; }
+    const remove = (list) => delBtn('ลบ', () => {
+      const refs = list.map((s) => S.db.collection('swaps').doc(s.id));
+      save(() => Promise.all(refs.map((r) => r.delete())), list.length > 1 ? 'ลบรายการสลับเวรแล้ว ทั้งสองวัน' : 'ลบรายการแลกเวรแล้ว');
+    });
+    box.replaceChildren(el('ul', { class: 'rows' }, ...items.map((list) => {
+      const s = list[0], note = list.map((x) => x.note).find(Boolean);
+      if (s.pairId) {
+        return el('li', null,
+          el('span', { class: 'main' },
+            el('b', { text: empName(s.employeeId) }), ' สลับเวรกับ ', el('b', { text: empName(s.replacementId) }),
+            ...list.map((x) => el('span', { class: 'sub', text: `${dayLabel(x.date)}: ${empName(x.replacementId)} มาแทน ${empName(x.employeeId)}` })),
+            note ? el('span', { class: 'sub', text: `สาเหตุ: ${note}` }) : null),
+          el('span', { class: 'actions' }, remove(list)));
+      }
+      return el('li', null,
+        el('span', { class: 'main' },
+          el('b', { text: empName(s.employeeId) }), ' หยุด ', el('b', { text: empName(s.replacementId) }), ' มาแทน',
+          el('span', { class: 'sub', text: dayLabel(s.date) + (s.note ? ` · ${s.note}` : '') })),
+        el('span', { class: 'actions' }, remove(list)));
+    })));
+  }
+
+  /* ---------- News assignments ---------- */
+  const jobPeople = (a) => (Array.isArray(a.employeeIds) ? a.employeeIds : []).map(empName).join(', ');
+  const byTime = (a, b) => a.date.localeCompare(b.date) || (a.time || '99').localeCompare(b.time || '99') || th(a.title, b.title);
+  const assignmentsOn = (date) => S.assignments.filter((a) => a.date === date).sort(byTime);
+  /* The calendar answers "who goes where": the place when there is one, otherwise the story. */
+  const jobShort = (a) => `${jobPeople(a)}: ${a.place || a.title}${a.time ? ` ${a.time}` : ''}`;
+  const jobDetail = (a) => [a.place ? `ที่ ${a.place}` : '', a.time ? `เวลา ${a.time} น.` : ''].filter(Boolean).join(' ');
+
+  function renderJobPeople() {
+    const box = $('job-people');
+    const checked = new Set([...box.querySelectorAll('input:checked')].map((i) => i.value));
+    box.replaceChildren(...activeEmployees().map((e) => {
+      const input = el('input', { type: 'checkbox', value: e.id, 'data-fkey': `job-person-${e.id}` });
+      input.checked = checked.has(e.id);
+      return el('label', null, input, e.name);
+    }));
+  }
+
+  function renderJobs() {
+    renderJobPeople();
+    const box = $('job-list'), today = todayISO();
+    const coming = S.assignments.filter((a) => a.date >= today).sort(byTime);
+    const gone = S.assignments.filter((a) => a.date < today).sort(byTime).reverse();
+    const row = (a) => el('li', null,
       el('span', { class: 'main' },
-        el('b', { text: empName(s.employeeId) }), ' หยุด ', el('b', { text: empName(s.replacementId) }), ' มาแทน',
-        el('span', { class: 'sub', text: `วัน${DAYS[dow(s.date)]}ที่ ${fmtDate(s.date)}` + (S.holidays[s.date] ? ` (${S.holidays[s.date]})` : '') + (s.note ? ` · ${s.note}` : '') })),
+        el('b', { text: a.title }),
+        el('span', { class: 'sub', text: `${dayLabel(a.date)}${a.time ? ` · ${a.time} น.` : ''}` }),
+        el('span', { class: 'sub', text: `${jobPeople(a)}${a.place ? ` · ${a.place}` : ''}` })),
       el('span', { class: 'actions' }, delBtn('ลบ', () => {
-        const ref = S.db.collection('swaps').doc(s.id);
-        save(() => ref.delete(), 'ลบรายการแลกเวรแล้ว');
-      }))))));
+        const ref = S.db.collection('assignments').doc(a.id);
+        save(() => ref.delete(), 'ลบหมายงานแล้ว');
+      })));
+    const kids = [coming.length ? el('ul', { class: 'rows' }, ...coming.map(row))
+      : emptyNote(S.ready ? 'ยังไม่มีหมายงานที่จะถึง' : 'หมายงานจะแสดงที่นี่ กำลังโหลดข้อมูล')];
+    if (gone.length) kids.push(el('details', null, el('summary', { text: `ผ่านไปแล้ว ${gone.length} หมาย` }), el('ul', { class: 'rows', style: 'margin-top:8px' }, ...gone.map(row))));
+    box.replaceChildren(el('div', { class: 'section' }, ...kids));
   }
 
   function hasHistory(id) {
     return S.leaves.some((l) => l.employeeId === id) || S.quotaEntries.some((q) => q.employeeId === id)
       || S.swaps.some((s) => s.employeeId === id || s.replacementId === id)
+      || S.assignments.some((a) => Array.isArray(a.employeeIds) && a.employeeIds.includes(id))
       || holidayGroups().some((g) => g.members.includes(id))
       || fridayRows().some((f) => f.employeeId === id);
   }
@@ -1038,6 +1186,12 @@ button { font: inherit; cursor: pointer; }
     });
   }
 
+  /* Every group that is not working that day is off. Derived from the roster, so a stored list can never leave a group out. */
+  function offGroups(row, groups) {
+    return groups.length ? groups.filter((g) => g.id !== row.work) : (row.off || []).map((id) => ({ id, name: id, members: [] }));
+  }
+  const offText = (row, groups) => { const off = offGroups(row, groups); return off.length ? `หยุด ${off.map((g) => g.name).join(', ')}` : ''; };
+
   function scheduleRows() {
     const doc = S.settings.find((x) => x.id === 'holidaySchedule');
     return doc && Array.isArray(doc.rows) ? [...doc.rows].sort((a, b) => a.date.localeCompare(b.date)) : [];
@@ -1069,8 +1223,9 @@ button { font: inherit; cursor: pointer; }
         ...weekly.map((id) => onDuty(id) + onLeave(id)),
         ...(friday ? [onDuty(friday.employeeId) + (friday.note ? ` (${friday.note})` : '') + onLeave(friday.employeeId)] : []),
       ],
-      off: row && row.off.length ? `หยุด ${row.off.map(groupName).join(', ')}` : '',
-      extra: swaps.filter((s) => !members.includes(s.employeeId) && !pressIds.includes(s.employeeId) && !(friday && friday.employeeId === s.employeeId)).map((s) => `แลกเวร ${empName(s.employeeId)} หยุด ${empName(s.replacementId)} มาแทน`),
+      off: row ? offText(row, groups) : '',
+      jobs: assignmentsOn(date).map((a) => jobShort(a)),
+      extra: swaps.filter((s) => !members.includes(s.employeeId) && !pressIds.includes(s.employeeId) && !(friday && friday.employeeId === s.employeeId)).map(swapText),
     };
   }
 
@@ -1140,6 +1295,8 @@ button { font: inherit; cursor: pointer; }
         ...day.names.map((n) => el('span', { class: 'cal-name', text: n })),
         day.press.length ? el('span', { class: 'cal-press', text: 'ปิดหน้า' }) : null,
         ...day.press.map((n) => el('span', { class: 'cal-name', text: n })),
+        day.jobs.length ? el('span', { class: 'cal-press', text: 'ออกหมาย' }) : null,
+        ...day.jobs.map((n) => el('span', { class: 'cal-name cal-job', text: n })),
         day.off ? el('span', { class: 'cal-note', text: day.off }) : null,
         ...day.extra.map((n) => el('span', { class: 'cal-note', text: n })));
     };
@@ -1170,8 +1327,8 @@ button { font: inherit; cursor: pointer; }
     const row = (r) => el('li', null, el('span', { class: 'main' },
       el('b', { text: `วัน${DAYS[dow(r.date)]}ที่ ${fmtDate(r.date)}` }), r.label ? ` · ${r.label}` : null,
       el('span', { class: 'sub', text: `ทำงาน: ${who(r.work)}` }),
-      el('span', { class: 'sub', text: `หยุด: ${r.off.map(who).join(' และ ')}` }),
-      ...S.swaps.filter((s) => s.date === r.date).map((s) => el('span', { class: 'sub', text: `แลกเวร: ${empName(s.employeeId)} หยุด ${empName(s.replacementId)} มาแทน` }))));
+      el('span', { class: 'sub', text: `หยุด: ${offGroups(r, groups).map((g) => who(g.id)).join(' และ ')}` }),
+      ...S.swaps.filter((s) => s.date === r.date).map((s) => el('span', { class: 'sub', text: swapText(s) }))));
     const today = todayISO(), coming = rows.filter((r) => r.date >= today), gone = rows.filter((r) => r.date < today);
     const kids = [el('p', { class: 'hint', text: `ตารางนี้มีถึง ${fmtDate(rows[rows.length - 1].date)}` })];
     kids.push(coming.length ? el('ul', { class: 'rows' }, ...coming.map(row)) : emptyNote('ไม่มีเวรที่จะถึงในตารางนี้'));
@@ -1392,6 +1549,33 @@ button { font: inherit; cursor: pointer; }
     $('swap-preview').replaceChildren(...kids);
   }
 
+  const tradeValues = () => ({ a: $('trade-a').value, aDate: $('trade-a-date').value, b: $('trade-b').value, bDate: $('trade-b-date').value, note: $('trade-note').value.trim() });
+  /* Says what each person holds on their date, so a wrong date shows up before saving. */
+  function previewTrade() {
+    const v = tradeValues(), kids = [];
+    const line = (id, date, other) => {
+      if (!id || !isDate(date)) return;
+      const duty = dutyOf(id, date);
+      kids.push(el('p', duty ? null : { class: 'warn' },
+        `${dayLabel(date)} ${empName(id)} ${duty || 'ไม่มีเวรในตาราง'}` + (other ? ` → ${empName(other)} ไปแทน` : '')));
+    };
+    line(v.a, v.aDate, v.b);
+    line(v.b, v.bDate, v.a);
+    $('trade-preview').replaceChildren(...kids);
+  }
+  function setSwapMode(mode) {
+    S.swapMode = mode;
+    $('swap-form').hidden = mode !== 'cover';
+    $('trade-form').hidden = mode !== 'trade';
+    $('mode-cover').setAttribute('aria-pressed', String(mode === 'cover'));
+    $('mode-trade').setAttribute('aria-pressed', String(mode === 'trade'));
+  }
+
+  const jobValues = () => ({
+    date: $('job-date').value, people: [...$('job-people').querySelectorAll('input:checked')].map((i) => i.value),
+    title: $('job-title').value.trim(), place: $('job-place').value.trim(), time: $('job-time').value,
+  });
+
   function showErrors(boxId, errors) {
     $(boxId).replaceChildren(...errors.map((e) => el('p', { class: 'bad', text: e })));
   }
@@ -1440,6 +1624,38 @@ button { font: inherit; cursor: pointer; }
     }
   });
   $('swap-date').addEventListener('change', previewSwap);
+
+  $('mode-cover').addEventListener('click', () => setSwapMode('cover'));
+  $('mode-trade').addEventListener('click', () => setSwapMode('trade'));
+  $('trade-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const v = tradeValues(), errors = checkTrade(v);
+    if (errors.length) { showErrors('trade-preview', errors); return; }
+    const refA = S.db.collection('swaps').doc(), refB = S.db.collection('swaps').doc();
+    const createdAt = new Date().toISOString(), pairId = refA.id;
+    /* Each record says who is off that date and who covers, the same shape as a plain swap, so the calendar needs nothing new. */
+    const bodyA = { date: v.aDate, employeeId: v.a, replacementId: v.b, note: v.note, pairId, createdAt };
+    const bodyB = { date: v.bDate, employeeId: v.b, replacementId: v.a, note: v.note, pairId, createdAt };
+    const msg = `สลับเวรแล้ว ${empName(v.b)} ไปแทน ${empName(v.a)} ${fmtDate(v.aDate)} และ ${empName(v.a)} ไปแทน ${empName(v.b)} ${fmtDate(v.bDate)}`;
+    if (await save(() => Promise.all([refA.set(bodyA), refB.set(bodyB)]), msg)) {
+      $('trade-a-date').value = ''; $('trade-b-date').value = ''; $('trade-note').value = ''; render();
+    }
+  });
+  for (const id of ['trade-a', 'trade-b', 'trade-a-date', 'trade-b-date']) $(id).addEventListener('change', previewTrade);
+
+  $('job-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const v = jobValues(), errors = checkJob(v);
+    if (errors.length) { showErrors('job-preview', errors); return; }
+    const ref = S.db.collection('assignments').doc();
+    const body = { date: v.date, employeeIds: v.people, title: v.title, place: v.place, time: v.time, createdAt: new Date().toISOString() };
+    if (await save(() => ref.set(body), `บันทึกหมายงาน ${fmtDate(v.date)} แล้ว`)) {
+      $('job-title').value = ''; $('job-place').value = ''; $('job-time').value = '';
+      $('job-people').querySelectorAll('input:checked').forEach((i) => { i.checked = false; });
+      $('job-preview').replaceChildren();
+      render();
+    }
+  });
 
   $('emp-form').addEventListener('submit', async (ev) => {
     ev.preventDefault();
@@ -1495,7 +1711,7 @@ button { font: inherit; cursor: pointer; }
   $('leave-filter').addEventListener('change', renderLeaveList);
 
   /* ---------- Views ---------- */
-  const VIEWS = ['overview', 'leave', 'swap', 'holiday', 'setup'];
+  const VIEWS = ['overview', 'leave', 'swap', 'assign', 'holiday', 'setup'];
   const viewName = () => (VIEWS.includes(S.view) ? S.view : 'overview');
   function route() {
     const name = viewName();
@@ -1635,6 +1851,8 @@ button { font: inherit; cursor: pointer; }
             d.names.forEach((n) => items.push({ text: n, size: 17 }));
             if (d.press.length) items.push({ text: 'ปิดหน้า', size: 15, weight: 600, head: true, color: PAPER.muted });
             d.press.forEach((n) => items.push({ text: n, size: 17 }));
+            if (d.jobs.length) items.push({ text: 'ออกหมาย', size: 15, weight: 600, head: true, color: PAPER.muted });
+            d.jobs.forEach((n) => items.push({ text: n, size: 16, color: PAPER.accent }));
             if (d.off) items.push({ text: d.off, size: 14, color: PAPER.muted });
             d.extra.forEach((n) => items.push({ text: n, size: 14, color: PAPER.muted }));
             return items;
@@ -1729,6 +1947,16 @@ button { font: inherit; cursor: pointer; }
         blocks: [{ table: {
           cols: [{ label: 'วันที่', w: 0.26 }, { label: 'ใครหยุด', w: 0.2 }, { label: 'ใครมาแทน', w: 0.2 }, { label: 'หมายเหตุ', w: 0.34 }],
           rows: [...S.swaps].sort((a, b) => a.date.localeCompare(b.date)).map((s) => [`วัน${DAYS[dow(s.date)]}ที่ ${fmtDate(s.date)}`, empName(s.employeeId), empName(s.replacementId), s.note || '-']),
+        } }],
+      };
+    }
+    if (view === 'assign') {
+      return {
+        title: 'หมายงาน', filename: 'หมายงาน', subtitle,
+        blocks: [{ table: {
+          cols: [{ label: 'วันที่', w: 0.24 }, { label: 'เวลา', w: 0.1, align: 'center' }, { label: 'งาน', w: 0.28 }, { label: 'ใคร', w: 0.18 }, { label: 'สถานที่', w: 0.2 }],
+          rows: S.assignments.filter((a) => a.date >= todayISO()).sort(byTime)
+            .map((a) => [`วัน${DAYS[dow(a.date)]}ที่ ${fmtDate(a.date)}`, a.time || '-', { text: a.title, weight: 600 }, jobPeople(a), a.place || '-']),
         } }],
       };
     }
