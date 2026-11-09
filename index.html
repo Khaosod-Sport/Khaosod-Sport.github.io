@@ -140,6 +140,7 @@ input[type="password"] { min-width: 0; border: 1px solid var(--line); border-rad
 .cal-note { display: block; color: var(--muted); font-size: .76rem; }
 .cal-job { color: var(--accent); }
 .cal-event { display: block; font-weight: 600; }
+.job-edit { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; flex: 1 1 100%; min-width: 0; }
 .cal-open { display: block; color: var(--warn); font-size: .76rem; }
 .badge { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
 .badge.open { background: var(--warn-bg); color: var(--warn); }
@@ -1193,7 +1194,7 @@ button { font: inherit; cursor: pointer; }
   }
 
   /* What someone already has on the given days: leave, duty after swaps, and other assignments. */
-  function busyFor(id, dates) {
+  function busyFor(id, dates, skipJobId) {
     const found = new Map();
     const add = (label, date) => { if (!found.has(label)) found.set(label, []); found.get(label).push(date); };
     for (const date of dates) {
@@ -1202,7 +1203,7 @@ button { font: inherit; cursor: pointer; }
       const cover = swaps.find((s) => s.replacementId === id);
       if (cover) add(`มาแทน ${empName(cover.employeeId)}`, date);
       else if (!swaps.some((s) => s.employeeId === id)) { const duty = dutyOf(id, date); if (duty) add(duty, date); }
-      for (const a of assignmentsOn(date)) if ((a.employeeIds || []).includes(id)) add(`มีหมาย "${a.title}"`, date);
+      for (const a of assignmentsOn(date)) if (a.id !== skipJobId && (a.employeeIds || []).includes(id)) add(`มีหมาย "${a.title}"`, date);
     }
     return [...found].map(([label, ds]) => `${label} ${fmtDates(ds, true)}`);
   }
@@ -1233,20 +1234,88 @@ button { font: inherit; cursor: pointer; }
     }));
   }
 
+  /* Editing happens in place. The draft lives in state, so a refresh from the Sheet mid-edit keeps what was typed. */
+  function startJobEdit(a) {
+    S.editJob = a.id; S.jobEditErrors = null;
+    S.jobDraft = { date: a.date, end: lastDay(a) !== a.date ? lastDay(a) : '', title: a.title || '', place: a.place || '', time: a.time || '', people: [...(a.employeeIds || [])] };
+    renderJobs();
+    const t = document.querySelector('[data-fkey="job-edit-title"]');
+    if (t) t.focus();
+  }
+  function stopJobEdit() { S.editJob = null; S.jobDraft = null; renderJobs(); }
+
+  function previewJobEdit(id) {
+    const d = S.jobDraft, box = $('job-edit-preview');
+    if (!d || !box) return;
+    const kids = (S.jobEditErrors || []).map((e) => el('p', { class: 'bad', text: e }));
+    if (isDate(d.date) && (!d.end || (isDate(d.end) && d.end >= d.date))) {
+      const dates = daysOf(d.date, d.end || d.date);
+      for (const p of d.people) {
+        const busy = busyFor(p, dates, id);
+        if (busy.length) kids.push(el('p', { class: 'warn', text: `${empName(p)} ${busy.join(' · ')}` }));
+      }
+    }
+    box.replaceChildren(...kids);
+  }
+
+  function jobEditRow(a) {
+    const d = S.jobDraft;
+    const field = (key, type, label) => {
+      const input = el('input', { type, value: d[key] || '', maxlength: type === 'text' ? '120' : null, 'data-fkey': `job-edit-${key}` });
+      if (type !== 'text') input.removeAttribute('maxlength');
+      input.addEventListener('input', () => { d[key] = input.value; S.jobEditErrors = null; previewJobEdit(a.id); });
+      return el('label', { class: 'field' }, el('span', { class: 'legend', text: label }), input);
+    };
+    const people = [...S.employees.filter((e) => d.people.includes(e.id) && e.active === false), ...activeEmployees()];
+    const pick = el('div', { class: 'people-pick', role: 'group', 'aria-label': 'ใครออกหมาย' }, ...people.map((e) => {
+      const box = el('input', { type: 'checkbox', value: e.id, 'data-fkey': `job-edit-person-${e.id}` });
+      box.checked = d.people.includes(e.id);
+      box.addEventListener('change', () => {
+        d.people = box.checked ? [...d.people, e.id] : d.people.filter((x) => x !== e.id);
+        S.jobEditErrors = null;
+        previewJobEdit(a.id);
+      });
+      return el('label', null, box, e.name);
+    }));
+    const saveBtn = el('button', { type: 'button', class: 'primary', text: 'บันทึกการแก้ไข', onclick: async () => {
+      const v = { date: d.date, end: d.end, people: d.people, title: d.title.trim() };
+      const errors = checkJob(v);
+      if (errors.length) { S.jobEditErrors = errors; previewJobEdit(a.id); return; }
+      const end = d.end && d.end > d.date ? d.end : '';
+      const ref = S.db.collection('assignments').doc(a.id);
+      const body = { date: d.date, endDate: end, employeeIds: d.people, title: v.title, place: d.place.trim(), time: d.time };
+      if (await save(() => ref.update(body), 'แก้ไขหมายงานแล้ว')) { S.editJob = null; S.jobDraft = null; render(); }
+    } });
+    const cancel = el('button', { type: 'button', class: 'small', text: 'ยกเลิก', onclick: stopJobEdit });
+    const preview = el('div', { class: 'preview', id: 'job-edit-preview', 'aria-live': 'polite' });
+    const li = el('li', null, el('div', { class: 'job-edit' },
+      field('title', 'text', 'ทำข่าวอะไร'),
+      field('place', 'text', 'สถานที่'),
+      el('div', { class: 'two' }, field('date', 'date', 'วันที่'), field('end', 'date', 'ถึงวันที่ (ถ้าหลายวัน)')),
+      field('time', 'time', 'เวลา'),
+      el('div', { class: 'field' }, el('span', { class: 'legend', text: 'ใครออกหมาย' }), pick),
+      preview,
+      el('div', { class: 'actions' }, saveBtn, cancel)));
+    setTimeout(() => previewJobEdit(a.id), 0);
+    return li;
+  }
+
   function renderJobs() {
     renderJobPeople();
     const box = $('job-list'), today = todayISO();
     const coming = S.assignments.filter((a) => lastDay(a) >= today).sort(byTime);
     const gone = S.assignments.filter((a) => lastDay(a) < today).sort(byTime).reverse();
-    const row = (a) => el('li', null,
+    const row = (a) => (S.editJob === a.id && !S.readOnly ? jobEditRow(a) : el('li', null,
       el('span', { class: 'main' },
         el('b', { text: a.title }),
         el('span', { class: 'sub', text: `${rangeLabel(a)}${a.time ? ` · ${a.time} น.` : ''}` }),
         el('span', { class: 'sub', text: `${jobPeople(a)}${a.place ? ` · ${a.place}` : ''}` })),
-      el('span', { class: 'actions' }, delBtn('ลบ', () => {
-        const ref = S.db.collection('assignments').doc(a.id);
-        save(() => ref.delete(), 'ลบหมายงานแล้ว');
-      })));
+      el('span', { class: 'actions' },
+        el('button', { type: 'button', class: 'small', 'data-write': '', text: 'แก้ไข', 'data-fkey': `job-open-${a.id}`, onclick: () => startJobEdit(a) }),
+        delBtn('ลบ', () => {
+          const ref = S.db.collection('assignments').doc(a.id);
+          save(() => ref.delete(), 'ลบหมายงานแล้ว');
+        }))));
     const kids = [coming.length ? el('ul', { class: 'rows' }, ...coming.map(row))
       : emptyNote(S.ready ? 'ยังไม่มีหมายงานที่จะถึง' : 'หมายงานจะแสดงที่นี่ กำลังโหลดข้อมูล')];
     if (gone.length) kids.push(el('details', null, el('summary', { text: `ผ่านไปแล้ว ${gone.length} หมาย` }), el('ul', { class: 'rows', style: 'margin-top:8px' }, ...gone.map(row))));
