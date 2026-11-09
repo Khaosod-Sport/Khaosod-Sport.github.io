@@ -139,6 +139,11 @@ input[type="password"] { min-width: 0; border: 1px solid var(--line); border-rad
 .cal-press { display: block; margin-top: 2px; color: var(--muted); font-family: var(--font-display); font-size: .76rem; font-weight: 600; }
 .cal-note { display: block; color: var(--muted); font-size: .76rem; }
 .cal-job { color: var(--accent); }
+.cal-event { display: block; font-weight: 600; }
+.cal-open { display: block; color: var(--warn); font-size: .76rem; }
+.badge { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+.badge.open { background: var(--warn-bg); color: var(--warn); }
+.badge.done { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent); }
 .people-pick { display: flex; flex-wrap: wrap; gap: 6px; }
 .people-pick label { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font-size: .9rem; cursor: pointer; }
 .people-pick input { margin: 0; }
@@ -406,7 +411,11 @@ button { font: inherit; cursor: pointer; }
       <div class="section" data-write>
         <h2>ลงหมายงาน</h2>
         <form id="job-form" novalidate>
-          <div class="field"><label for="job-date">วันที่</label><input type="date" id="job-date"></div>
+          <div class="field"><label for="job-event">จากงานกีฬาที่ลงไว้ (ไม่บังคับ)</label><select id="job-event"></select></div>
+          <div class="two">
+            <div class="field"><label for="job-date">วันที่</label><input type="date" id="job-date"></div>
+            <div class="field"><label for="job-end">ถึงวันที่ (ถ้าหลายวัน)</label><input type="date" id="job-end"></div>
+          </div>
           <div class="field"><span class="legend" id="job-people-label">ใครออกหมาย</span><div class="people-pick" id="job-people" role="group" aria-labelledby="job-people-label"></div></div>
           <div class="field"><label for="job-title">ทำข่าวอะไร</label><input type="text" id="job-title" maxlength="120" placeholder="เช่น ไทยลีก บุรีรัมย์ พบ การท่าเรือ"></div>
           <div class="field"><label for="job-place">สถานที่ (ไม่บังคับ)</label><input type="text" id="job-place" maxlength="120" placeholder="เช่น สนามช้าง อารีน่า"></div>
@@ -418,6 +427,25 @@ button { font: inherit; cursor: pointer; }
       <div class="section">
         <h2>หมายงานที่จะถึง</h2>
         <div id="job-list"></div>
+      </div>
+    </div>
+    <div class="split" style="margin-top:28px">
+      <div class="section" data-write>
+        <h2>ปฏิทินงานกีฬา</h2>
+        <form id="event-form" novalidate>
+          <p class="hint" style="margin:0">ลงรายการหรือแมตช์ที่ต้องตามไว้ล่วงหน้า พอลงหมายจากงานนี้ ระบบจะบอกว่ามีคนออกแล้ว</p>
+          <div class="two">
+            <div class="field"><label for="event-date">วันที่</label><input type="date" id="event-date"></div>
+            <div class="field"><label for="event-end">ถึงวันที่ (ถ้าหลายวัน)</label><input type="date" id="event-end"></div>
+          </div>
+          <div class="field"><label for="event-title">ชื่องาน</label><input type="text" id="event-title" maxlength="120" placeholder="เช่น ฟุตบอลโลก รอบคัดเลือก ไทย พบ จีน"></div>
+          <div class="preview" id="event-preview" aria-live="polite"></div>
+          <button class="primary" type="submit">เพิ่มงานกีฬา</button>
+        </form>
+      </div>
+      <div class="section">
+        <h2>งานกีฬาที่จะถึง</h2>
+        <div id="event-list"></div>
       </div>
     </div>
   </section>
@@ -658,18 +686,34 @@ button { font: inherit; cursor: pointer; }
     return errors;
   }
 
+  /* An optional end date turns a single date into a run of days. */
+  function checkRange(errors, start, end) {
+    if (!isDate(start)) { errors.push('เลือกวันที่'); return; }
+    if (!end) return;
+    if (!isDate(end) || end < start) errors.push('วันที่จบต้องไม่ก่อนวันที่เริ่ม');
+    else if ((toUTC(end) - toUTC(start)) / 864e5 > MAX_RANGE_DAYS) errors.push('เลือกช่วงวันได้ไม่เกิน 1 ปี');
+  }
+
+  function checkEvent(v) {
+    const errors = [];
+    if (!S.ready) errors.push('กำลังโหลดข้อมูลล่าสุด รอสักครู่แล้วลองอีกครั้ง');
+    checkRange(errors, v.date, v.end);
+    if (!v.title) errors.push('ใส่ชื่องานกีฬา');
+    return errors;
+  }
+
   function checkJob(v) {
     const errors = [];
     if (!S.ready) errors.push('กำลังโหลดข้อมูลล่าสุด รอสักครู่แล้วลองอีกครั้ง');
-    if (!isDate(v.date)) errors.push('เลือกวันที่');
+    checkRange(errors, v.date, v.end);
     if (!v.people.length) errors.push('เลือกคนออกหมายอย่างน้อย 1 คน');
     if (!v.title) errors.push('ใส่ว่าไปทำข่าวอะไร');
     return errors;
   }
 
   /* ---------- State and lookups ---------- */
-  const COLLECTIONS = ['employees', 'positions', 'leaveTypes', 'quotaEntries', 'leaves', 'swaps', 'holidays', 'settings', 'assignments'];
-  const S = { db: null, editCode: '', view: 'overview', readOnly: true, ready: false, personId: null, renaming: false, calMonth: todayISO().slice(0, 7), editPos: null, editPosName: '', swapMode: 'cover', employees: [], positions: [], leaveTypes: [], quotaEntries: [], leaves: [], swaps: [], holidays: {}, settings: [], assignments: [] };
+  const COLLECTIONS = ['employees', 'positions', 'leaveTypes', 'quotaEntries', 'leaves', 'swaps', 'holidays', 'settings', 'assignments', 'events'];
+  const S = { db: null, editCode: '', view: 'overview', readOnly: true, ready: false, personId: null, renaming: false, calMonth: todayISO().slice(0, 7), editPos: null, editPosName: '', swapMode: 'cover', employees: [], positions: [], leaveTypes: [], quotaEntries: [], leaves: [], swaps: [], holidays: {}, settings: [], assignments: [], events: [] };
   const fresh = new Set();
   /* The position an employee holds is stored by id in `desk`, so renaming a position updates everyone at once. */
   const positionName = (id) => { const p = S.positions.find((x) => x.id === id); return p ? p.name : ''; };
@@ -792,8 +836,8 @@ button { font: inherit; cursor: pointer; }
     const focusKey = active && active.dataset ? active.dataset.fkey : null;
     const typed = focusKey && active.tagName === 'INPUT' ? active.value : null;
     renderToday(); renderOverview(); renderColumns(); renderLeaveSummary(); renderSelects();
-    renderLeaveList(); renderSwapList(); renderJobs(); renderCalendar(); renderFriday(); renderHoliday(); renderSetup(); renderPerson();
-    previewLeave(); previewQuota(); previewSwap(); previewTrade();
+    renderLeaveList(); renderSwapList(); renderJobs(); renderEvents(); renderCalendar(); renderFriday(); renderHoliday(); renderSetup(); renderPerson();
+    previewLeave(); previewQuota(); previewSwap(); previewTrade(); previewJob();
     if (focusKey) {
       const again = document.querySelector(`[data-fkey="${CSS.escape(focusKey)}"]`);
       if (again && !again.disabled) {
@@ -1100,7 +1144,81 @@ button { font: inherit; cursor: pointer; }
   /* ---------- News assignments ---------- */
   const jobPeople = (a) => (Array.isArray(a.employeeIds) ? a.employeeIds : []).map(empName).join(', ');
   const byTime = (a, b) => a.date.localeCompare(b.date) || (a.time || '99').localeCompare(b.time || '99') || th(a.title, b.title);
-  const assignmentsOn = (date) => S.assignments.filter((a) => a.date === date).sort(byTime);
+  /* Assignments and sports events may run several days: date is the first, endDate the last. */
+  const lastDay = (x) => (isDate(x.endDate) && x.endDate > x.date ? x.endDate : x.date);
+  const spans = (x, date) => x.date <= date && date <= lastDay(x);
+  const daysOf = (start, end) => { const out = []; for (let d = start, i = 0; d <= end && i <= MAX_RANGE_DAYS; d = addDays(d, 1), i++) out.push(d); return out; };
+  const rangeLabel = (x) => (lastDay(x) === x.date ? dayLabel(x.date) : fmtDates(daysOf(x.date, lastDay(x))));
+  const assignmentsOn = (date) => S.assignments.filter((a) => spans(a, date)).sort(byTime);
+
+  /* ---------- Sports events to cover ---------- */
+  const eventJobs = (e) => S.assignments.filter((a) => a.eventId === e.id);
+  const eventsOn = (date) => S.events.filter((e) => spans(e, date)).sort((a, b) => a.date.localeCompare(b.date) || th(a.title, b.title));
+  const upcomingEvents = () => S.events.filter((e) => lastDay(e) >= todayISO()).sort((a, b) => a.date.localeCompare(b.date) || th(a.title, b.title));
+
+  function renderEvents() {
+    const box = $('event-list'), today = todayISO();
+    fillSelect($('job-event'), upcomingEvents().map((e) => ({ value: e.id, label: `${fmtDates(daysOf(e.date, lastDay(e)), true)} · ${e.title}` })), 'ไม่ได้มาจากงานที่ลงไว้');
+    const row = (e) => {
+      const jobs = eventJobs(e), people = [...new Set(jobs.flatMap((a) => a.employeeIds || []))].map(empName);
+      return el('li', null,
+        el('span', { class: 'main' },
+          el('b', { text: e.title }),
+          el('span', { class: 'sub', text: rangeLabel(e) }),
+          people.length ? el('span', { class: 'badge done', text: `มีคนออกแล้ว: ${people.join(', ')}` }) : el('span', { class: 'badge open', text: 'ยังไม่มีคนออก' })),
+        el('span', { class: 'actions' },
+          el('button', { type: 'button', class: 'small', 'data-write': '', text: 'ลงหมายจากงานนี้', onclick: () => jobFromEvent(e) }),
+          delBtn('ลบ', () => {
+            const ref = S.db.collection('events').doc(e.id);
+            save(() => ref.delete(), 'ลบงานกีฬาแล้ว');
+          })));
+    };
+    const coming = upcomingEvents(), gone = S.events.filter((e) => lastDay(e) < today).sort((a, b) => b.date.localeCompare(a.date));
+    const kids = [coming.length ? el('ul', { class: 'rows' }, ...coming.map(row))
+      : emptyNote(S.ready ? 'ยังไม่มีงานกีฬาที่จะถึง' : 'งานกีฬาจะแสดงที่นี่ กำลังโหลดข้อมูล')];
+    if (gone.length) kids.push(el('details', null, el('summary', { text: `ผ่านไปแล้ว ${gone.length} งาน` }), el('ul', { class: 'rows', style: 'margin-top:8px' }, ...gone.map(row))));
+    box.replaceChildren(el('div', { class: 'section' }, ...kids));
+  }
+
+  /* Fills the assignment form from an event, keeping anything already typed. */
+  function jobFromEvent(e) {
+    $('job-event').value = e.id;
+    $('job-date').value = e.date;
+    $('job-end').value = lastDay(e) !== e.date ? lastDay(e) : '';
+    $('job-title').value = e.title;
+    previewJob();
+    $('job-form').scrollIntoView({ block: 'start' });
+    const first = $('job-people').querySelector('input');
+    if (first) first.focus();
+  }
+
+  /* What someone already has on the given days: leave, duty after swaps, and other assignments. */
+  function busyFor(id, dates) {
+    const found = new Map();
+    const add = (label, date) => { if (!found.has(label)) found.set(label, []); found.get(label).push(date); };
+    for (const date of dates) {
+      if (S.leaves.some((l) => l.employeeId === id && l.dates.includes(date))) add('ลา', date);
+      const swaps = S.swaps.filter((s) => s.date === date);
+      const cover = swaps.find((s) => s.replacementId === id);
+      if (cover) add(`มาแทน ${empName(cover.employeeId)}`, date);
+      else if (!swaps.some((s) => s.employeeId === id)) { const duty = dutyOf(id, date); if (duty) add(duty, date); }
+      for (const a of assignmentsOn(date)) if ((a.employeeIds || []).includes(id)) add(`มีหมาย "${a.title}"`, date);
+    }
+    return [...found].map(([label, ds]) => `${label} ${fmtDates(ds, true)}`);
+  }
+
+  function previewJob() {
+    const v = jobValues(), kids = [];
+    if (isDate(v.date) && v.people.length && (!v.end || (isDate(v.end) && v.end >= v.date))) {
+      const dates = daysOf(v.date, v.end || v.date);
+      for (const id of v.people) {
+        const busy = busyFor(id, dates);
+        if (busy.length) kids.push(el('p', { class: 'warn', text: `${empName(id)} ${busy.join(' · ')}` }));
+      }
+      if (!kids.length) kids.push(el('p', { text: 'คนที่เลือกไม่ติดลา เวร หรือหมายอื่นในวันนั้น' }));
+    }
+    $('job-preview').replaceChildren(...kids);
+  }
   /* The calendar answers "who covers what": the story, with the time when there is one. */
   const jobShort = (a) => `${jobPeople(a)}: ${a.title}${a.time ? ` ${a.time}` : ''}`;
   const jobDetail = (a) => [a.place ? `ที่ ${a.place}` : '', a.time ? `เวลา ${a.time} น.` : ''].filter(Boolean).join(' ');
@@ -1118,12 +1236,12 @@ button { font: inherit; cursor: pointer; }
   function renderJobs() {
     renderJobPeople();
     const box = $('job-list'), today = todayISO();
-    const coming = S.assignments.filter((a) => a.date >= today).sort(byTime);
-    const gone = S.assignments.filter((a) => a.date < today).sort(byTime).reverse();
+    const coming = S.assignments.filter((a) => lastDay(a) >= today).sort(byTime);
+    const gone = S.assignments.filter((a) => lastDay(a) < today).sort(byTime).reverse();
     const row = (a) => el('li', null,
       el('span', { class: 'main' },
         el('b', { text: a.title }),
-        el('span', { class: 'sub', text: `${dayLabel(a.date)}${a.time ? ` · ${a.time} น.` : ''}` }),
+        el('span', { class: 'sub', text: `${rangeLabel(a)}${a.time ? ` · ${a.time} น.` : ''}` }),
         el('span', { class: 'sub', text: `${jobPeople(a)}${a.place ? ` · ${a.place}` : ''}` })),
       el('span', { class: 'actions' }, delBtn('ลบ', () => {
         const ref = S.db.collection('assignments').doc(a.id);
@@ -1225,6 +1343,7 @@ button { font: inherit; cursor: pointer; }
       ],
       off: row ? offText(row, groups) : '',
       jobs: assignmentsOn(date).map((a) => jobShort(a)),
+      events: eventsOn(date).map((e) => ({ title: e.title, open: !eventJobs(e).length })),
       extra: swaps.filter((s) => !members.includes(s.employeeId) && !pressIds.includes(s.employeeId) && !(friday && friday.employeeId === s.employeeId)).map(swapText),
     };
   }
@@ -1295,6 +1414,8 @@ button { font: inherit; cursor: pointer; }
         ...day.names.map((n) => el('span', { class: 'cal-name', text: n })),
         day.press.length ? el('span', { class: 'cal-press', text: 'ปิดหน้า' }) : null,
         ...day.press.map((n) => el('span', { class: 'cal-name', text: n })),
+        day.events.length ? el('span', { class: 'cal-press', text: 'งานกีฬา' }) : null,
+        ...day.events.flatMap((e) => [el('span', { class: 'cal-event', text: e.title }), e.open ? el('span', { class: 'cal-open', text: 'ยังไม่มีคนออก' }) : null]),
         day.jobs.length ? el('span', { class: 'cal-press', text: 'ออกหมาย' }) : null,
         ...day.jobs.map((n) => el('span', { class: 'cal-name cal-job', text: n })),
         day.off ? el('span', { class: 'cal-note', text: day.off }) : null,
@@ -1572,7 +1693,8 @@ button { font: inherit; cursor: pointer; }
   }
 
   const jobValues = () => ({
-    date: $('job-date').value, people: [...$('job-people').querySelectorAll('input:checked')].map((i) => i.value),
+    date: $('job-date').value, end: $('job-end').value, eventId: $('job-event').value,
+    people: [...$('job-people').querySelectorAll('input:checked')].map((i) => i.value),
     title: $('job-title').value.trim(), place: $('job-place').value.trim(), time: $('job-time').value,
   });
 
@@ -1648,11 +1770,31 @@ button { font: inherit; cursor: pointer; }
     const v = jobValues(), errors = checkJob(v);
     if (errors.length) { showErrors('job-preview', errors); return; }
     const ref = S.db.collection('assignments').doc();
-    const body = { date: v.date, employeeIds: v.people, title: v.title, place: v.place, time: v.time, createdAt: new Date().toISOString() };
-    if (await save(() => ref.set(body), `บันทึกหมายงาน ${fmtDate(v.date)} แล้ว`)) {
-      $('job-title').value = ''; $('job-place').value = ''; $('job-time').value = '';
+    const end = v.end && v.end > v.date ? v.end : '';
+    const body = { date: v.date, endDate: end, eventId: v.eventId, employeeIds: v.people, title: v.title, place: v.place, time: v.time, createdAt: new Date().toISOString() };
+    if (await save(() => ref.set(body), `บันทึกหมายงาน ${end ? fmtDates(daysOf(v.date, end)) : fmtDate(v.date)} แล้ว`)) {
+      $('job-title').value = ''; $('job-place').value = ''; $('job-time').value = ''; $('job-end').value = ''; $('job-event').value = '';
       $('job-people').querySelectorAll('input:checked').forEach((i) => { i.checked = false; });
       $('job-preview').replaceChildren();
+      render();
+    }
+  });
+  for (const id of ['job-date', 'job-end']) $(id).addEventListener('change', previewJob);
+  $('job-people').addEventListener('change', previewJob);
+  $('job-event').addEventListener('change', () => {
+    const e = S.events.find((x) => x.id === $('job-event').value);
+    if (e) jobFromEvent(e); else previewJob();
+  });
+
+  $('event-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const v = { date: $('event-date').value, end: $('event-end').value, title: $('event-title').value.trim() };
+    const errors = checkEvent(v);
+    if (errors.length) { showErrors('event-preview', errors); return; }
+    const ref = S.db.collection('events').doc();
+    const end = v.end && v.end > v.date ? v.end : '';
+    if (await save(() => ref.set({ date: v.date, endDate: end, title: v.title, createdAt: new Date().toISOString() }), `เพิ่มงานกีฬา ${v.title} แล้ว`)) {
+      $('event-date').value = ''; $('event-end').value = ''; $('event-title').value = ''; $('event-preview').replaceChildren();
       render();
     }
   });
@@ -1851,6 +1993,11 @@ button { font: inherit; cursor: pointer; }
             d.names.forEach((n) => items.push({ text: n, size: 17 }));
             if (d.press.length) items.push({ text: 'ปิดหน้า', size: 15, weight: 600, head: true, color: PAPER.muted });
             d.press.forEach((n) => items.push({ text: n, size: 17 }));
+            if (d.events.length) items.push({ text: 'งานกีฬา', size: 15, weight: 600, head: true, color: PAPER.muted });
+            d.events.forEach((e) => {
+              items.push({ text: e.title, size: 16, weight: 600 });
+              if (e.open) items.push({ text: 'ยังไม่มีคนออก', size: 14, color: PAPER.warn });
+            });
             if (d.jobs.length) items.push({ text: 'ออกหมาย', size: 15, weight: 600, head: true, color: PAPER.muted });
             d.jobs.forEach((n) => items.push({ text: n, size: 16, color: PAPER.accent }));
             if (d.off) items.push({ text: d.off, size: 14, color: PAPER.muted });
@@ -1953,11 +2100,22 @@ button { font: inherit; cursor: pointer; }
     if (view === 'assign') {
       return {
         title: 'หมายงาน', filename: 'หมายงาน', subtitle,
-        blocks: [{ table: {
-          cols: [{ label: 'วันที่', w: 0.24 }, { label: 'เวลา', w: 0.1, align: 'center' }, { label: 'งาน', w: 0.28 }, { label: 'ใคร', w: 0.18 }, { label: 'สถานที่', w: 0.2 }],
-          rows: S.assignments.filter((a) => a.date >= todayISO()).sort(byTime)
-            .map((a) => [`วัน${DAYS[dow(a.date)]}ที่ ${fmtDate(a.date)}`, a.time || '-', { text: a.title, weight: 600 }, jobPeople(a), a.place || '-']),
-        } }],
+        blocks: [
+          { heading: 'หมายงานที่จะถึง' },
+          { table: {
+            cols: [{ label: 'วันที่', w: 0.24 }, { label: 'เวลา', w: 0.1, align: 'center' }, { label: 'งาน', w: 0.28 }, { label: 'ใคร', w: 0.18 }, { label: 'สถานที่', w: 0.2 }],
+            rows: S.assignments.filter((a) => lastDay(a) >= todayISO()).sort(byTime)
+              .map((a) => [rangeLabel(a), a.time || '-', { text: a.title, weight: 600 }, jobPeople(a), a.place || '-']),
+          } },
+          { heading: 'งานกีฬาที่จะถึง' },
+          { table: {
+            cols: [{ label: 'วันที่', w: 0.28 }, { label: 'งาน', w: 0.4 }, { label: 'คนออก', w: 0.32 }],
+            rows: upcomingEvents().map((e) => {
+              const people = [...new Set(eventJobs(e).flatMap((a) => a.employeeIds || []))].map(empName);
+              return [rangeLabel(e), { text: e.title, weight: 600 }, people.length ? people.join(', ') : { text: 'ยังไม่มีคนออก', color: PAPER.warn, weight: 600 }];
+            }),
+          } },
+        ],
       };
     }
     if (view === 'holiday') {
