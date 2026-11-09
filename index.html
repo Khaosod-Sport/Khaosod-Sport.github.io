@@ -1101,8 +1101,8 @@ button { font: inherit; cursor: pointer; }
   const jobPeople = (a) => (Array.isArray(a.employeeIds) ? a.employeeIds : []).map(empName).join(', ');
   const byTime = (a, b) => a.date.localeCompare(b.date) || (a.time || '99').localeCompare(b.time || '99') || th(a.title, b.title);
   const assignmentsOn = (date) => S.assignments.filter((a) => a.date === date).sort(byTime);
-  /* The calendar answers "who goes where": the place when there is one, otherwise the story. */
-  const jobShort = (a) => `${jobPeople(a)}: ${a.place || a.title}${a.time ? ` ${a.time}` : ''}`;
+  /* The calendar answers "who covers what": the story, with the time when there is one. */
+  const jobShort = (a) => `${jobPeople(a)}: ${a.title}${a.time ? ` ${a.time}` : ''}`;
   const jobDetail = (a) => [a.place ? `ที่ ${a.place}` : '', a.time ? `เวลา ${a.time} น.` : ''].filter(Boolean).join(' ');
 
   function renderJobPeople() {
