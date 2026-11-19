@@ -1402,14 +1402,13 @@ button { font: inherit; cursor: pointer; }
     /* Friday duty for domestic reporters is set date by date, so it shows even on a public holiday. */
     const friday = fridayRows().find((f) => f.date === date);
     const weekly = friday ? pressIds.filter((id) => id !== friday.employeeId) : pressIds;
-    const onLeave = (id) => (S.leaves.some((l) => l.employeeId === id && l.dates.includes(date)) ? ' (ลา)' : '');
     return {
       holiday: S.holidays[date] || (row && row.label) || '',
       group: row ? groupName(row.work) : '',
       names: members.map(onDuty),
       press: [
-        ...weekly.map((id) => onDuty(id) + onLeave(id)),
-        ...(friday ? [onDuty(friday.employeeId) + (friday.note ? ` (${friday.note})` : '') + onLeave(friday.employeeId)] : []),
+        ...weekly.map((id) => onDuty(id)),
+        ...(friday ? [onDuty(friday.employeeId) + (friday.note ? ` (${friday.note})` : '')] : []),
       ],
       off: row ? offText(row, groups) : '',
       jobs: assignmentsOn(date).map((a) => jobShort(a)),
