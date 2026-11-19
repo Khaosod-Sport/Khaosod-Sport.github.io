@@ -139,6 +139,7 @@ input[type="password"] { min-width: 0; border: 1px solid var(--line); border-rad
 .cal-press { display: block; margin-top: 2px; color: var(--muted); font-family: var(--font-display); font-size: .76rem; font-weight: 600; }
 .cal-note { display: block; color: var(--muted); font-size: .76rem; }
 .cal-job { color: var(--accent); }
+.cal-leave { color: var(--bad); }
 .cal-event { display: block; font-weight: 600; }
 .job-edit { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; flex: 1 1 100%; min-width: 0; }
 .cal-open { display: block; color: var(--warn); font-size: .76rem; }
@@ -1414,6 +1415,10 @@ button { font: inherit; cursor: pointer; }
       jobs: assignmentsOn(date).map((a) => jobShort(a)),
       events: eventsOn(date).map((e) => ({ title: e.title, open: !eventJobs(e).length })),
       extra: swaps.filter((s) => !members.includes(s.employeeId) && !pressIds.includes(s.employeeId) && !(friday && friday.employeeId === s.employeeId)).map(swapText),
+      /* Everyone with a leave record covering this date, with the kind of leave. */
+      leave: S.leaves.filter((l) => Array.isArray(l.dates) && l.dates.includes(date))
+        .sort((a, b) => empName(a.employeeId).localeCompare(empName(b.employeeId), 'th'))
+        .map((l) => `${empName(l.employeeId)} (${typeShort(l.typeId)})`),
     };
   }
 
@@ -1487,6 +1492,8 @@ button { font: inherit; cursor: pointer; }
         ...day.events.flatMap((e) => [el('span', { class: 'cal-event', text: e.title }), e.open ? el('span', { class: 'cal-open', text: 'ยังไม่มีคนออก' }) : null]),
         day.jobs.length ? el('span', { class: 'cal-press', text: 'ออกหมาย' }) : null,
         ...day.jobs.map((n) => el('span', { class: 'cal-name cal-job', text: n })),
+        day.leave.length ? el('span', { class: 'cal-press', text: 'ลา' }) : null,
+        ...day.leave.map((n) => el('span', { class: 'cal-name cal-leave', text: n })),
         day.off ? el('span', { class: 'cal-note', text: day.off }) : null,
         ...day.extra.map((n) => el('span', { class: 'cal-note', text: n })));
     };
@@ -2069,6 +2076,8 @@ button { font: inherit; cursor: pointer; }
             });
             if (d.jobs.length) items.push({ text: 'ออกหมาย', size: 15, weight: 600, head: true, color: PAPER.muted });
             d.jobs.forEach((n) => items.push({ text: n, size: 16, color: PAPER.accent }));
+            if (d.leave.length) items.push({ text: 'ลา', size: 15, weight: 600, head: true, color: PAPER.muted });
+            d.leave.forEach((n) => items.push({ text: n, size: 16, color: PAPER.bad }));
             if (d.off) items.push({ text: d.off, size: 14, color: PAPER.muted });
             d.extra.forEach((n) => items.push({ text: n, size: 14, color: PAPER.muted }));
             return items;
