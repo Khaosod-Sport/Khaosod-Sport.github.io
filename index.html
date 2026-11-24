@@ -476,6 +476,28 @@ button { font: inherit; cursor: pointer; }
       <div id="friday-list"></div>
     </div>
     <div class="section">
+      <h2>เวรเทศกาล ปีใหม่และสงกรานต์</h2>
+      <p class="hint">แบ่งเป็น 2 ชุด ชุดหนึ่งทำงาน อีกชุดหยุด แล้วสลับกัน ในช่วงเทศกาลปฏิทินด้านบนจะใช้เวรนี้แทนเวรวันหยุดปกติ</p>
+      <p class="hint" data-write>เปลี่ยนชื่อได้เมื่อมีการแลกเวร ถ้าเลือกคนที่อยู่อีกชุด ทั้งสองคนจะสลับชุดกันให้</p>
+      <div id="festival-sets"></div>
+      <h3>ช่วงวันเทศกาล</h3>
+      <div id="festival-list"></div>
+      <form id="festival-form" data-write novalidate>
+        <div class="field"><label for="fest-name">ชื่อเทศกาล</label><input type="text" id="fest-name" maxlength="40" placeholder="เช่น สงกรานต์ 2570"></div>
+        <div class="two">
+          <div class="field"><label for="fest-a-start">ชุดที่ 1 ทำงานตั้งแต่</label><input type="date" id="fest-a-start"></div>
+          <div class="field"><label for="fest-a-end">ถึงวันที่</label><input type="date" id="fest-a-end"></div>
+        </div>
+        <div class="two">
+          <div class="field"><label for="fest-b-start">ชุดที่ 2 ทำงานตั้งแต่</label><input type="date" id="fest-b-start"></div>
+          <div class="field"><label for="fest-b-end">ถึงวันที่</label><input type="date" id="fest-b-end"></div>
+        </div>
+        <p class="hint" style="margin:0">ช่วงที่ชุดหนึ่งทำงาน อีกชุดได้หยุด</p>
+        <div id="fest-errors"></div>
+        <button class="primary" type="submit">เพิ่มช่วงเทศกาล</button>
+      </form>
+    </div>
+    <div class="section">
       <h2>รายชื่อเวรทำงาน</h2>
       <p class="hint" data-write>เปลี่ยนชื่อได้เมื่อมีการแลกเวร ถ้าเลือกคนที่อยู่เวรอื่น ทั้งสองคนจะสลับเวรกันให้</p>
       <div id="holiday-groups"></div>
@@ -862,6 +884,9 @@ button { font: inherit; cursor: pointer; }
     const today = todayISO(), off = new Set();
     for (const l of S.leaves) if (l.dates.includes(today)) off.add(l.employeeId);
     for (const s of S.swaps) if (s.date === today) off.add(s.employeeId);
+    /* The festival set that is off today, unless they swapped in to cover someone. */
+    const fest = festivalOn(today);
+    if (fest) for (const g of fest.off) for (const id of g.members) if (!S.swaps.some((s) => s.date === today && s.replacementId === id)) off.add(id);
     return S.employees.filter((e) => off.has(e.id)).map((e) => e.name);
   }
 
@@ -1098,6 +1123,8 @@ button { font: inherit; cursor: pointer; }
 
   /* Which duty someone holds on a date before any swap, for the trade preview. */
   function dutyOf(id, date) {
+    const fest = festivalOn(date);
+    if (fest) return fest.set.members.includes(id) ? `อยู่เวร${fest.period.name} ${fest.set.name}` : '';
     const row = scheduleRows().find((r) => r.date === date);
     if (row) {
       const g = holidayGroups().find((x) => x.id === row.work);
@@ -1328,6 +1355,7 @@ button { font: inherit; cursor: pointer; }
       || S.swaps.some((s) => s.employeeId === id || s.replacementId === id)
       || S.assignments.some((a) => Array.isArray(a.employeeIds) && a.employeeIds.includes(id))
       || holidayGroups().some((g) => g.members.includes(id))
+      || festivalDoc().sets.some((g) => g.members.includes(id))
       || fridayRows().some((f) => f.employeeId === id);
   }
 
@@ -1340,9 +1368,11 @@ button { font: inherit; cursor: pointer; }
     const ref = S.db.collection('settings').doc('holidayDuty');
     return save(() => ref.set({ groups }), msg);
   }
-  function changeMember(groupId, index, newId) {
+  /* A roster is a list of named groups plus how to write it back. The weekend roster and the festival sets share the editing code. */
+  const HOLIDAY_ROSTER = { key: 'member', get: () => holidayGroups(), write: (groups, msg) => writeGroups(groups, msg) };
+  function changeMember(groupId, index, newId, roster = HOLIDAY_ROSTER) {
     queued(() => {
-      const groups = holidayGroups(), group = groups.find((g) => g.id === groupId);
+      const groups = roster.get(), group = groups.find((g) => g.id === groupId);
       if (!group || group.members[index] === newId) return null;
       const oldId = group.members[index];
       let other = null;
@@ -1354,24 +1384,126 @@ button { font: inherit; cursor: pointer; }
       const msg = other && other.id !== group.id
         ? `สลับเวรแล้ว ${empName(newId)} มา${group.name} และ ${empName(oldId)} ไป${other.name}`
         : `เปลี่ยนเป็น ${empName(newId)} แล้ว`;
-      return writeGroups(groups, msg);
+      return roster.write(groups, msg);
     });
   }
-  function removeMember(groupId, index) {
+  function removeMember(groupId, index, roster = HOLIDAY_ROSTER) {
     queued(() => {
-      const groups = holidayGroups(), group = groups.find((g) => g.id === groupId);
+      const groups = roster.get(), group = groups.find((g) => g.id === groupId);
       if (!group) return null;
       const [gone] = group.members.splice(index, 1);
-      return writeGroups(groups, `เอา ${empName(gone)} ออกจาก${group.name}แล้ว`);
+      return roster.write(groups, `เอา ${empName(gone)} ออกจาก${group.name}แล้ว`);
     });
   }
-  function addMember(groupId, id) {
+  function addMember(groupId, id, roster = HOLIDAY_ROSTER) {
     queued(() => {
-      const groups = holidayGroups(), group = groups.find((g) => g.id === groupId);
+      const groups = roster.get(), group = groups.find((g) => g.id === groupId);
       if (!group || groups.some((g) => g.members.includes(id))) return null;
       group.members.push(id);
-      return writeGroups(groups, `เพิ่ม ${empName(id)} ใน${group.name}แล้ว`);
+      return roster.write(groups, `เพิ่ม ${empName(id)} ใน${group.name}แล้ว`);
     });
+  }
+
+  /* ---------- Festival duty (New Year, Songkran): two sets take turns, one works while the other is off ----------
+     Until someone edits it, the page uses this starting roster, so it shows without a write to the Sheet. */
+  const FESTIVAL_START = {
+    sets: [
+      { id: 'f1', name: 'ชุดที่ 1', members: ['vjbozpwnx7c76pzdiiy7', 'unvqc6chofkxk62wdv9s', '8nr5v3zepkewhmdw24g7', 'nzqdhrx6m11f82i8iq0x', 'ahe75hv6sa7gfz7bfn1r'] },
+      { id: 'f2', name: 'ชุดที่ 2', members: ['9wskr0s123c23oedsjud', 'sdxv6vc2zz520mvra59s', 'uhkf29jnts6nuw16f0wf', 'lueixrlly24zykmt03sf', 'ok8rt9wrb0ckawnr0xoe'] },
+    ],
+    periods: [
+      { id: 'ny2570', name: 'ปีใหม่ 2570', spans: [{ set: 'f1', start: '2026-12-26', end: '2026-12-31' }, { set: 'f2', start: '2027-01-01', end: '2027-01-06' }] },
+    ],
+  };
+  function festivalDoc() {
+    const doc = S.settings.find((x) => x.id === 'festivalDuty');
+    const src = doc && Array.isArray(doc.sets) ? doc : FESTIVAL_START;
+    return {
+      sets: src.sets.map((g) => ({ ...g, members: Array.isArray(g.members) ? [...g.members] : [] })),
+      periods: (Array.isArray(src.periods) ? src.periods : []).map((p) => ({ ...p, spans: Array.isArray(p.spans) ? p.spans.map((s) => ({ ...s })) : [] })),
+    };
+  }
+  function writeFestival(doc, msg) {
+    const ref = S.db.collection('settings').doc('festivalDuty');
+    return save(() => ref.set(doc), msg);
+  }
+  const FESTIVAL_ROSTER = { key: 'fest', get: () => festivalDoc().sets, write: (sets, msg) => writeFestival({ ...festivalDoc(), sets }, msg) };
+  const periodStart = (p) => p.spans.map((s) => s.start).sort()[0] || '';
+  const periodEnd = (p) => p.spans.map((s) => s.end).sort().pop() || '';
+  /* The festival set working on a date, and the sets that are off then. */
+  function festivalOn(date) {
+    const { sets, periods } = festivalDoc();
+    for (const p of periods) for (const s of p.spans) {
+      if (s.start <= date && date <= s.end) {
+        const set = sets.find((g) => g.id === s.set) || { id: s.set, name: s.set, members: [] };
+        return { period: p, set, off: sets.filter((g) => g.id !== s.set) };
+      }
+    }
+    return null;
+  }
+  function checkFestival(v) {
+    const errors = [];
+    if (!S.ready) errors.push('กำลังโหลดข้อมูลล่าสุด รอสักครู่แล้วลองอีกครั้ง');
+    if (!v.name) errors.push('ใส่ชื่อเทศกาล เช่น สงกรานต์ 2570');
+    const spans = [];
+    v.spans.forEach((s, i) => {
+      const label = `ชุดที่ ${i + 1}`;
+      if (!isDate(s.start)) { errors.push(`เลือกวันแรกที่ ${label} ทำงาน`); return; }
+      const end = isDate(s.end) ? s.end : s.start;
+      if (end < s.start) { errors.push(`วันสุดท้ายของ ${label} ต้องไม่ก่อนวันแรก`); return; }
+      if ((toUTC(end) - toUTC(s.start)) / 864e5 > 31) { errors.push(`${label} ทำงานได้ไม่เกิน 1 เดือนต่อช่วง`); return; }
+      spans.push({ ...s, end });
+    });
+    if (spans.length === 2 && spans[0].start <= spans[1].end && spans[1].start <= spans[0].end) errors.push('ช่วงทำงานของสองชุดซ้อนกัน');
+    for (const s of spans) {
+      const hit = festivalDoc().periods.find((p) => p.spans.some((x) => x.start <= s.end && s.start <= x.end));
+      if (hit) { errors.push(`ซ้อนกับช่วง ${hit.name} ที่มีอยู่แล้ว`); break; }
+    }
+    return { errors, spans };
+  }
+
+  /* Editable lists of names for each group of a roster. */
+  function rosterBox(groups, roster) {
+    const groupOf = new Map();
+    for (const g of groups) for (const id of g.members) groupOf.set(id, g);
+    const active = activeEmployees();
+    const memberRow = (g, id, index) => {
+      if (S.readOnly) return el('li', null, el('span', { class: 'main', text: empName(id) }));
+      const choices = active.some((e) => e.id === id) ? active : [...S.employees.filter((e) => e.id === id), ...active];
+      const select = el('select', { 'aria-label': `ชื่อใน${g.name} ลำดับที่ ${index + 1}`, 'data-fkey': `${roster.key}-${g.id}-${index}` },
+        ...choices.map((e) => {
+          const in_ = groupOf.get(e.id);
+          return el('option', { value: e.id, text: e.name + (in_ && in_.id !== g.id ? ` (${in_.name})` : '') });
+        }));
+      select.value = id;
+      select.addEventListener('change', () => changeMember(g.id, index, select.value, roster));
+      return el('li', null, el('span', { class: 'member', style: 'flex:1 1 100%' }, select, delBtn('เอาออก', () => removeMember(g.id, index, roster))));
+    };
+    return el('div', { class: 'roster' }, ...groups.map((g) => {
+      const free = active.filter((e) => !groupOf.has(e.id));
+      const add = free.length && !S.readOnly ? el('select', { 'aria-label': `เพิ่มชื่อใน${g.name}`, 'data-fkey': `${roster.key}-add-${g.id}` },
+        el('option', { value: '', text: 'เพิ่มชื่อในเวรนี้' }), ...free.map((e) => el('option', { value: e.id, text: e.name }))) : null;
+      if (add) add.addEventListener('change', () => { if (add.value) addMember(g.id, add.value, roster); });
+      return el('div', { class: 'roster-group' }, el('h3', { text: g.name }),
+        g.members.length ? el('ul', { class: 'rows' }, ...g.members.map((id, i) => memberRow(g, id, i))) : emptyNote('ยังไม่มีชื่อในเวรนี้'),
+        add);
+    }));
+  }
+
+  function renderFestival() {
+    const { sets, periods } = festivalDoc();
+    $('festival-sets').replaceChildren(rosterBox(sets, FESTIVAL_ROSTER));
+    const setName = (id) => { const g = sets.find((x) => x.id === id); return g ? g.name : id; };
+    const range = (s) => { const days = []; for (let d = s.start; d <= s.end && days.length < 40; d = addDays(d, 1)) days.push(d); return fmtDates(days, true); };
+    const row = (p) => el('li', null,
+      el('span', { class: 'main' }, el('b', { text: p.name }),
+        ...[...p.spans].sort((a, b) => a.start.localeCompare(b.start)).map((s) => el('span', { class: 'sub', text: `${setName(s.set)} ทำงาน ${range(s)} · ${sets.filter((g) => g.id !== s.set).map((g) => g.name).join(', ')} หยุด` }))),
+      delBtn('ลบ', () => queued(() => { const doc = festivalDoc(); return writeFestival({ ...doc, periods: doc.periods.filter((x) => x.id !== p.id) }, `ลบช่วง ${p.name} แล้ว`); })));
+    const sorted = [...periods].sort((a, b) => periodStart(a).localeCompare(periodStart(b)));
+    const today = todayISO(), coming = sorted.filter((p) => periodEnd(p) >= today), gone = sorted.filter((p) => periodEnd(p) < today);
+    const kids = [coming.length ? el('ul', { class: 'rows' }, ...coming.map(row)) : emptyNote('ยังไม่มีช่วงเทศกาลที่จะถึง')];
+    if (gone.length) kids.push(el('details', null, el('summary', { text: `ผ่านไปแล้ว ${gone.length} ช่วง` }), el('ul', { class: 'rows', style: 'margin-top:8px' }, ...gone.map(row))));
+    $('festival-list').replaceChildren(...kids);
   }
 
   /* Every group that is not working that day is off. Derived from the roster, so a stored list can never leave a group out. */
@@ -1387,16 +1519,18 @@ button { font: inherit; cursor: pointer; }
 
   /* What one calendar day says. A swap recorded for that date replaces the name, so the calendar shows who actually comes in. */
   function calendarDay(date) {
-    const row = scheduleRows().find((r) => r.date === date);
+    /* A festival period replaces the weekend roster and the weekly newspaper duty for its dates. */
+    const fest = festivalOn(date);
+    const row = fest ? null : scheduleRows().find((r) => r.date === date);
     const groups = holidayGroups(), swaps = S.swaps.filter((s) => s.date === date);
     const groupName = (id) => { const g = groups.find((x) => x.id === id); return g ? g.name : id; };
-    const members = row ? (groups.find((g) => g.id === row.work) || { members: [] }).members : [];
+    const members = fest ? fest.set.members : row ? (groups.find((g) => g.id === row.work) || { members: [] }).members : [];
     const onDuty = (id) => {
       const s = swaps.find((x) => x.employeeId === id);
       return s ? `${empName(s.replacementId)} (แทน ${empName(id)})` : empName(id);
     };
     /* Newspaper duty is weekly and runs Monday to Friday. A public holiday follows the holiday roster instead. */
-    const pressIds = !row && !isWeekend(date) && !S.holidays[date]
+    const pressIds = !row && !fest && !isWeekend(date) && !S.holidays[date]
       ? activeEmployees().filter((e) => Array.isArray(e.dutyDays) && e.dutyDays.includes(dow(date))).map((e) => e.id)
       : [];
     /* Friday duty for domestic reporters is set date by date, so it shows even on a public holiday. */
@@ -1404,13 +1538,13 @@ button { font: inherit; cursor: pointer; }
     const weekly = friday ? pressIds.filter((id) => id !== friday.employeeId) : pressIds;
     return {
       holiday: S.holidays[date] || (row && row.label) || '',
-      group: row ? groupName(row.work) : '',
+      group: fest ? `${fest.period.name} ${fest.set.name}` : row ? groupName(row.work) : '',
       names: members.map(onDuty),
       press: [
         ...weekly.map((id) => onDuty(id)),
         ...(friday ? [onDuty(friday.employeeId) + (friday.note ? ` (${friday.note})` : '')] : []),
       ],
-      off: row ? offText(row, groups) : '',
+      off: fest ? (fest.off.length ? `หยุด ${fest.off.map((g) => g.name).join(', ')}` : '') : row ? offText(row, groups) : '',
       jobs: assignmentsOn(date).map((a) => jobShort(a)),
       events: eventsOn(date).map((e) => ({ title: e.title, open: !eventJobs(e).length })),
       extra: swaps.filter((s) => !members.includes(s.employeeId) && !pressIds.includes(s.employeeId) && !(friday && friday.employeeId === s.employeeId)).map(swapText),
@@ -1499,7 +1633,8 @@ button { font: inherit; cursor: pointer; }
     const head = el('tr', null, ...DAYS_SHORT.map((d) => el('th', { scope: 'col', text: d })));
     const table = el('table', { class: 'cal' }, el('thead', null, head),
       el('tbody', null, ...monthWeeks(ym).map((w) => el('tr', null, ...w.map(cell)))));
-    const none = S.ready && !scheduleRows().some((r) => r.date.startsWith(ym));
+    const none = S.ready && !scheduleRows().some((r) => r.date.startsWith(ym))
+      && !festivalDoc().periods.some((p) => periodStart(p).slice(0, 7) <= ym && ym <= periodEnd(p).slice(0, 7));
     $('holiday-calendar').replaceChildren(el('div', { class: 'section' },
       el('div', { class: 'table-scroll' }, table),
       none ? el('p', { class: 'hint', text: 'เดือนนี้ยังไม่มีข้อมูลเวรในตาราง' }) : null));
@@ -1536,33 +1671,9 @@ button { font: inherit; cursor: pointer; }
   function renderHoliday() {
     const box = $('holiday-groups'), groups = holidayGroups();
     renderSchedule(groups);
+    renderFestival();
     if (!groups.length) { box.replaceChildren(emptyNote(S.ready ? 'ยังไม่มีข้อมูลเวรทำงาน' : 'เวรทำงานจะแสดงที่นี่ กำลังโหลดข้อมูล')); return; }
-    const groupOf = new Map();
-    for (const g of groups) for (const id of g.members) groupOf.set(id, g);
-    const active = activeEmployees();
-
-    const memberRow = (g, id, index) => {
-      if (S.readOnly) return el('li', null, el('span', { class: 'main', text: empName(id) }));
-      const choices = active.some((e) => e.id === id) ? active : [...S.employees.filter((e) => e.id === id), ...active];
-      const select = el('select', { 'aria-label': `ชื่อใน${g.name} ลำดับที่ ${index + 1}`, 'data-fkey': `member-${g.id}-${index}` },
-        ...choices.map((e) => {
-          const in_ = groupOf.get(e.id);
-          return el('option', { value: e.id, text: e.name + (in_ && in_.id !== g.id ? ` (${in_.name})` : '') });
-        }));
-      select.value = id;
-      select.addEventListener('change', () => changeMember(g.id, index, select.value));
-      return el('li', null, el('span', { class: 'member', style: 'flex:1 1 100%' }, select, delBtn('เอาออก', () => removeMember(g.id, index))));
-    };
-
-    box.replaceChildren(el('div', { class: 'roster' }, ...groups.map((g) => {
-      const free = active.filter((e) => !groupOf.has(e.id));
-      const add = free.length && !S.readOnly ? el('select', { 'aria-label': `เพิ่มชื่อใน${g.name}`, 'data-fkey': `add-${g.id}` },
-        el('option', { value: '', text: 'เพิ่มชื่อในเวรนี้' }), ...free.map((e) => el('option', { value: e.id, text: e.name }))) : null;
-      if (add) add.addEventListener('change', () => { if (add.value) addMember(g.id, add.value); });
-      return el('div', { class: 'roster-group' }, el('h3', { text: g.name }),
-        g.members.length ? el('ul', { class: 'rows' }, ...g.members.map((id, i) => memberRow(g, id, i))) : emptyNote('ยังไม่มีชื่อในเวรนี้'),
-        add);
-    })));
+    box.replaceChildren(rosterBox(groups, HOLIDAY_ROSTER));
   }
 
   /* The page behind an employee's name: balances, quota changes, and their history. */
@@ -1901,6 +2012,19 @@ button { font: inherit; cursor: pointer; }
     queued(() => writeFriday([...fridayRows(), { date, employeeId: emp, note }], `เพิ่มเวร ${fmtDate(date)} แล้ว`));
     $('friday-date').value = ''; $('friday-note').value = '';
   });
+  $('festival-form').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const v = {
+      name: $('fest-name').value.trim(),
+      spans: [{ set: 'f1', start: $('fest-a-start').value, end: $('fest-a-end').value }, { set: 'f2', start: $('fest-b-start').value, end: $('fest-b-end').value }],
+    };
+    const r = checkFestival(v);
+    showErrors('fest-errors', r.errors);
+    if (r.errors.length) return;
+    const id = 'p' + Date.now().toString(36);
+    queued(() => { const doc = festivalDoc(); return writeFestival({ ...doc, periods: [...doc.periods, { id, name: v.name, spans: r.spans }] }, `เพิ่มช่วง ${v.name} แล้ว`); });
+    ['fest-name', 'fest-a-start', 'fest-a-end', 'fest-b-start', 'fest-b-end'].forEach((k) => { $(k).value = ''; });
+  });
   $('cal-prev').addEventListener('click', () => shiftMonth(-1));
   $('cal-next').addEventListener('click', () => shiftMonth(1));
   $('cal-now').addEventListener('click', () => { S.calMonth = todayISO().slice(0, 7); renderCalendar(); });
@@ -2204,6 +2328,8 @@ button { font: inherit; cursor: pointer; }
           { calendar: S.calMonth },
           { heading: 'รายชื่อเวร' },
           { table: { cols: [{ label: 'เวร', w: 0.2 }, { label: 'รายชื่อ', w: 0.8 }], rows: holidayGroups().map((g) => [{ text: g.name, weight: 600 }, g.members.map(empName).join(', ') || '-']) } },
+          { heading: 'เวรเทศกาล ปีใหม่และสงกรานต์' },
+          { table: { cols: [{ label: 'ชุด', w: 0.2 }, { label: 'รายชื่อ', w: 0.8 }], rows: festivalDoc().sets.map((g) => [{ text: g.name, weight: 600 }, g.members.map(empName).join(', ') || '-']) } },
           ...(notes.length ? [{ notes }] : []),
         ],
       };
